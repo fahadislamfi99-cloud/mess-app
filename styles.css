@@ -1,0 +1,80 @@
+/* Custom base styles */
+body {
+    background-color: #f4f7f6;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif; */
+}
+
+/* Navbar styling */
+.navbar {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.nav-link {
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+/* Card styling */
+.card {
+    border-radius: 10px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.1)!important;
+}
+
+/* Form inputs */
+.form-control, .form-select {
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+/* Table styling */
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.table td {
+    padding: 1rem 0.5rem;
+}
+
+/* Utility constraints */
+.max-w-600 {
+    max-width: 600px;
+}
+
+/* Checkbox styling in Add Meal */
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+
+/* Print/PDF Layout Settings */
+@media print {
+    /* বাটন, ড্রপডাউন এবং অপ্রয়োজনীয় জিনিস হাইড করা */
+    button, select, .form-select, .navbar, nav {
+        display: none !important;
+    }
+    /* ব্যাকগ্রাউন্ড কালার যেন পিডিএফে ঠিকমতো আসে */
+    body, .card, .bg-primary, .badge {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    /* পিডিএফের মার্জিন ঠিক করা */
+    @page {
+        margin: 0.5cm;
+    }
+}

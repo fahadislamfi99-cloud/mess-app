@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mess Meal Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#" onclick="navigate('dashboard')">
+                <i class="bi bi-house-door-fill me-2"></i>Mess Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link nav-btn active" href="#"
+                            data-target="dashboard">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="members">Members</a></li>
+                    <li class="nav-item">
+    <a class="nav-link nav-btn" href="#" data-target="view-balance">
+        <i class="bi bi-wallet2"></i> Balance
+    </a>
+</li>
+                    <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="deposits">Add Deposit</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="add-meal">Add Meal</a></li>
+                    <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="add-bazar">Add Bazar</a></li>
+                    <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="report">Monthly Report</a>
+                    </li>
+                    <li class="nav-item ms-lg-3 mt-2 mt-lg-0">
+                        <button id="btn-auth" class="btn btn-warning btn-sm fw-bold" onclick="toggleLogin()">
+                            <i class="bi bi-box-arrow-in-right"></i> Manager Login
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+
+        <!-- Month select -->
+         <div class="bg-white p-3 shadow-sm mb-4 rounded d-flex flex-wrap justify-content-between align-items-center border-start border-primary border-4">
+    <h5 class="text-primary mb-0 me-3 d-flex align-items-center text-nowrap">
+    <i class="bi bi-calendar-range me-2"></i> Report Period 
+    <span id="display-date-range" class="badge bg-primary bg-opacity-10 text-primary ms-2 border border-primary border-opacity-25" style="font-size: 0.85rem;"></span>
+</h5>
+    <div class="d-flex align-items-center flex-wrap gap-3 mt-2 mt-md-0">
+        <div class="d-flex align-items-center">
+            <label class="text-muted small fw-bold me-2">From:</label>
+            <input type="date" id="global-start-date" class="form-control form-control-sm border-primary fw-bold text-dark">
+        </div>
+        <div class="d-flex align-items-center">
+            <label class="text-muted small fw-bold me-2">To:</label>
+            <input type="date" id="global-end-date" class="form-control form-control-sm border-primary fw-bold text-dark">
+        </div>
+        <button class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="applyGlobalFilter()">
+            <i class="bi bi-search"></i> Show Data
+        </button>
+    </div>
+</div>
+        <!-- Month select -->
+
+        <div id="dashboard" class="view-section">
+            <h3 class="mb-4">Dashboard Overview</h3>
+            <div class="row g-4">
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-primary border-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Members</p>
+                            <h2 id="stat-members" class="mb-0">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-success border-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Meals (Month)</p>
+                            <h2 id="stat-meals" class="mb-0">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-warning border-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Current Meal Rate</p>
+                            <h2 class="mb-0">৳<span id="stat-rate">0.00</span></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-danger border-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Expense (খরচ)</p>
+                            <h2 class="mb-0 text-danger">৳<span id="stat-expense">0</span></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-info border-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Deposited (মোট জমা)</p>
+                            <h2 class="mb-0 text-info">৳<span id="stat-deposit">0</span></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-dark border-4" id="card-cash">
+                        <div class="card-body">
+                            <p class="text-muted mb-1 fw-bold" id="title-cash">Cash in Hand (ক্যাশ আছে)</p>
+                            <h2 class="mb-0 text-dark" id="text-cash">৳<span id="stat-cash">0</span></h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Meals -->
+             <div class="card shadow-sm border-0 mt-5 mb-4 border-start border-info border-4" style="background-color: white;">
+    <div class="card-body">
+        <h5 class="text-info mb-3"><i class="bi bi-calendar2-check"></i> Today's Meals Overview</h5>
+        <div id="dashboard-today-meals-container">
+            </div>
+    </div>
+</div>
+            <!-- Today's Meals -->
+
+            <!-- Low Balance Members -->
+             <div id="low-balance-card" class="card shadow-sm border-0 mb-4 border-start border-danger border-4" style="background-color: white;">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+                        <h5 class="text-danger mb-2 mb-md-0"><i class="bi bi-exclamation-triangle-fill"></i> Low Balance Alert</h5>
+                        
+                        <div id="low-balance-actions" class="d-flex align-items-center bg-light p-1 rounded border border-danger border-opacity-25">
+                            <label class="text-muted small fw-bold me-2 ms-2 text-nowrap">Alert below (৳):</label>
+                            
+                            <input type="number" id="low-balance-threshold" class="form-control form-control-sm border-danger text-danger fw-bold text-center me-2" value="100" style="width: 80px;" oninput="renderLowBalanceAlert()">
+                            
+                            <button class="btn btn-sm btn-danger d-flex align-items-center me-1" onclick="copyLowBalanceNames()" title="Copy Names">
+                                <i class="bi bi-clipboard-check"></i>
+                            </button>
+                            
+                            <button class="btn btn-sm btn-outline-danger d-flex align-items-center" onclick="downloadLowBalanceImage()" title="Download as Image">
+                                <i class="bi bi-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Room</th>
+                                    <th class="text-end pe-3">Current Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-low-balance">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Low Balance Members -->
+
+
+        </div>
+<!-- Dashboard End Here -->
+        <div id="members" class="view-section d-none">
+            <h3 class="mb-4">Manage Members</h3>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Add Member</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-add-member">
+                                <div class="mb-3">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Room Number</label>
+                                    <input type="text" class="form-control" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Add Member</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Room</th>
+                                            <th>Status</th>
+                                            <th class="text-end">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-members">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="deposits" class="view-section d-none">
+            <h3 class="mb-4">Member Deposits</h3>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Add Money</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-add-deposit">
+                                <div class="mb-3">
+                                    <label class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="deposit-date" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Select Member</label>
+                                    <select class="form-select" id="deposit-member" required>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Amount (৳)</label>
+                                    <input type="number" class="form-control" id="deposit-amount" required>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">Save Deposit</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Member Name</th>
+                                        <th class="text-end">Amount</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-deposits">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="add-meal" class="view-section d-none">
+            <h3 class="mb-4">Add Meal Entry</h3>
+            <div class="card shadow-sm border-0 max-w-600 mx-auto">
+                <div class="card-body">
+                    <form id="form-add-meal">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" id="meal-date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Meal Type</label>
+<select class="form-select" id="meal-type" required>
+    <option value="Sehri">সেহরি (Sehri)</option>
+    <option value="Breakfast">Breakfast</option>
+    <option value="Lunch" selected>Lunch</option>
+    <option value="Iftar">ইফতার (Iftar)</option>
+    <option value="Dinner">Dinner</option>
+</select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Select Members</label>
+                            <div class="p-3 border rounded bg-light" id="meal-member-list">
+                            </div>
+                            <small class="text-muted mt-2 d-block">Total selected for this meal: <span
+                                    id="meal-count-preview" class="fw-bold text-primary">0</span></small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Meal Entry</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- <h4 class="mt-5 mb-3 text-primary">Today's Meals</h4> -->
+            <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
+                <h4 class="text-primary mb-0">Today's Meals</h4>
+                <div>
+                    <button class="btn btn-danger btn-sm fw-bold shadow-sm me-2" onclick="clearTodaysMeals()">
+                        <i class="bi bi-trash3-fill"></i> Clear All
+                    </button>
+                    <button class="btn btn-outline-success btn-sm fw-bold shadow-sm"
+                        onclick="downloadTodaysMealsPhoto()">
+                        <i class="bi bi-image"></i> Save as Photo
+                    </button>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4 border-start border-primary border-4"
+                style="background-color: white;">
+                <div class="card-body" id="today-meals-container">
+                </div>
+            </div>
+
+            <h4 class="mb-3 text-secondary">Previous Meals (This Month)</h4>
+            <div class="card shadow-sm border-0 border-start border-secondary border-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Meal Type</th>
+                                    <th>Members Eating</th>
+                                    <th>Total</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-meal-history">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="add-bazar" class="view-section d-none">
+            <h3 class="mb-4">Bazar Expenses</h3>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Add Bazar</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-add-bazar">
+                                <div class="mb-3">
+                                    <label class="form-label">Date</label>
+                                    <input type="date" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Item Name</label>
+                                    <input type="text" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Amount (৳)</label>
+                                    <input type="number" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Note</label>
+                                    <textarea class="form-control" rows="2"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Save Bazar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Item</th>
+                                            <th>Note</th>
+                                            <th class="text-end">Amount</th>
+                                            <th class="text-end">Action</th>
+                                        </tr>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-bazar">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="report" class="view-section d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3>Monthly Report</h3>
+                <button class="btn btn-outline-danger" onclick="downloadReportPDF()">
+                    <i class="bi bi-file-earmark-pdf"></i> Download PDF
+                </button>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4 bg-white">
+                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center">
+                    <div class="mb-3 mb-md-0">
+                        <h5 class="mb-0 text-primary">Manager for this Month</h5>
+                        <small class="text-muted" id="current-manager-name">No manager assigned yet</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <select class="form-select" id="select-manager">
+                            <option value="">Choose Member...</option>
+                        </select>
+                        <button class="btn btn-outline-primary text-nowrap" onclick="saveManager()">Set
+                            Manager</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4 bg-primary text-white">
+                <div class="card-body d-flex justify-content-around text-center py-4">
+                    <div>
+                        <h6 class="text-white-50">Total Expense</h6>
+                        <h3 class="mb-0">৳<span id="report-expense">0</span></h3>
+                    </div>
+                    <div>
+                        <h6 class="text-white-50">Total Meals</h6>
+                        <h3 class="mb-0" id="report-meals">0</h3>
+                    </div>
+                    <div>
+                        <h6 class="text-white-50">Meal Rate</h6>
+                        <h3 class="mb-0">৳<span id="report-rate">0.00</span></h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th class="text-center">Meals</th>
+                                    <th class="text-end">Payable</th>
+                                    <th class="text-end text-success">Deposited</th>
+                                    <th class="text-end">Balance (Due/Adv)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-report">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+
+        <div class="modal fade" id="editMemberModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Member</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="form-edit-member">
+                            <input type="hidden" id="edit-member-id">
+                            <div class="mb-3">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="edit-member-name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Room Number</label>
+                                <input type="text" class="form-control" id="edit-member-room" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Update Member</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="editBazarModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Bazar Entry</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="form-edit-bazar">
+                            <input type="hidden" id="edit-bazar-id">
+                            <div class="mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" id="edit-bazar-date" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Item Name</label>
+                                <input type="text" class="form-control" id="edit-bazar-item" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Amount (৳)</label>
+                                <input type="number" class="form-control" id="edit-bazar-amount" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Note</label>
+                                <textarea class="form-control" id="edit-bazar-note" rows="2"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Update Bazar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- login modal -->
+
+        <div class="modal fade" id="loginModal" tabindex="-1">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="bi bi-lock-fill"></i> Manager Login</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Enter Secret PIN</label>
+                            <input type="password" class="form-control text-center fs-4" id="manager-pin"
+                                placeholder="****">
+                        </div>
+                        <button class="btn btn-primary w-100 fw-bold" onclick="checkPIN()">Login</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Meal Modal -->
+         <div class="modal fade" id="editMealModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Meal Entry</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-edit-meal" onsubmit="saveEditedMeal(event)">
+                        <input type="hidden" id="edit-meal-id">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" id="edit-meal-date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Meal Type</label>
+<select class="form-select" id="edit-meal-type" required>
+    <option value="Sehri">সেহরি (Sehri)</option>
+    <option value="Breakfast">Breakfast</option>
+    <option value="Lunch">Lunch</option>
+    <option value="Iftar">ইফতার (Iftar)</option>
+    <option value="Dinner">Dinner</option>
+</select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Update Members</label>
+                            <div class="p-3 border rounded bg-light" id="edit-meal-member-list" style="max-height: 200px; overflow-y: auto;">
+                                </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">Update Meal</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+        <!-- Daily Meal Modal -->
+
+        <!-- Balance Modal -->
+         <div id="view-balance" class="view-section d-none">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 mt-3">
+        <h3 class="mb-0 text-primary"><i class="bi bi-wallet2"></i> Member Balances</h3>
+        <small class="text-muted mt-2 mt-md-0">* This balance is based on the currently selected Report period.</small>
+    </div>
+
+    <div class="card shadow-sm border-0 border-start border-success border-4" style="background-color: white;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Member Details</th>
+                            <th class="text-end">Current Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-balance">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- Balance Modal -->
+
+    </div>
+
+    <footer class="text-center py-4 mt-5 border-top" style="background-color: #f8f9fa;">
+        <div class="container">
+            <p class="mb-1 text-secondary fw-bold">
+                &copy; <span id="current-year">2026</span> Mess Meal Management. All rights reserved.
+            </p>
+            <small class="text-muted">
+                Designed & Developed with <i class="bi bi-heart-fill text-danger"></i> by 
+                <a href="https://www.facebook.com/fahad.islam.fir" target="_blank" class="text-primary fw-bold text-decoration-none" title="Visit Developer's Facebook Profile">
+                    Fahad Islam
+                </a>
+            </small>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
