@@ -18,6 +18,8 @@ const state = {
     report: { totalExpense: 0, totalMeals: 0, mealRate: 0, members: [] }
 };
 
+let activeEditBtn = null; // কোন পেন আইকনে ক্লিক হয়েছে তা মনে রাখার জন্য
+
 const today = new Date();
 const currentYear = today.getFullYear();
 const currentMonth = today.getMonth() + 1;
@@ -48,13 +50,30 @@ function toggleLogin() {
 function checkPIN() {
     const pin = document.getElementById('manager-pin').value;
     if (pin === SECRET_PIN) {
+        // পিন সঠিক হলে
         localStorage.setItem('isManager', 'true');
         isManager = true;
         bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
         applyAuthRules();
-        alert("Login Successful! You can now add or edit data.");
+        
+        // লগিন সাকসেসফুল হওয়ার পর সুন্দর একটি টোস্ট (Toast) অ্যানিমেশন
+        const Toast = Swal.mixin({ 
+            toast: true, 
+            position: 'top-end', 
+            showConfirmButton: false, 
+            timer: 2000 
+        });
+        Toast.fire({ icon: 'success', title: 'Login Successful!' });
+        
     } else {
-        alert("Incorrect PIN! Access Denied.");
+        // পিন ভুল হলে প্রফেশনাল এরর পপআপ
+        Swal.fire({
+            title: 'Access Denied!',
+            text: 'আপনার দেওয়া পিনটি ভুল। দয়া করে আবার চেষ্টা করুন।',
+            icon: 'error',
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Try Again'
+        });
     }
 }
 
@@ -218,10 +237,25 @@ function setupNavigation() {
     });
 }
 
+// function setDefaultDates() {
+//     document.getElementById('meal-date').value = todayString;
+//     document.querySelector('#form-add-bazar input[type="date"]').value = todayString;
+// }
+
 function setDefaultDates() {
-    document.getElementById('meal-date').value = todayString;
-    document.querySelector('#form-add-bazar input[type="date"]').value = todayString;
+    // বাংলাদেশ সময় অনুযায়ী আজকের একদম সঠিক তারিখ (Local Timezone) বের করা
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localDate = new Date(now.getTime() - offset).toISOString().split('T')[0];
+
+    const mealDateInput = document.getElementById('meal-date');
+    const bazarDateInput = document.querySelector('#form-add-bazar input[type="date"]');
+    
+    if (mealDateInput) mealDateInput.value = localDate;
+    if (bazarDateInput) bazarDateInput.value = localDate;
 }
+
+
 
 // --- DATA FETCHING ---
 // async function loadAllData() {
@@ -363,7 +397,7 @@ function renderMembersTable() {
             <td>${member.room}</td>
             <td><span class="badge ${member.isActive ? 'bg-success' : 'bg-secondary'}">${member.isActive ? 'Active' : 'Inactive'}</span></td>
             <td class="text-end">
-                <button onclick="openEditMemberModal('${member._id}', '${member.name}', '${member.room}')" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></button>
+                <button onclick="openEditMemberModal(this, '${member._id}', '${member.name}', '${member.room}')" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></button>
                 <button onclick="deleteMember('${member._id}')" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
             </td>
         `;
@@ -391,7 +425,7 @@ function renderDeposits() {
         groupedDeposits[memberId].push(entry);
     });
 
-    // --- নতুন: রুম নাম্বার অনুযায়ী লিস্টটিকে সাজানো (Sorting) ---
+    // ২. রুম নাম্বার অনুযায়ী লিস্টটিকে সাজানো (Sorting)
     const sortedMemberIds = Object.keys(groupedDeposits).sort((idA, idB) => {
         const memberA = state.members.find(m => m._id === idA);
         const memberB = state.members.find(m => m._id === idB);
@@ -400,7 +434,7 @@ function renderDeposits() {
         return roomA.localeCompare(roomB, undefined, { numeric: true });
     });
 
-    // ২. সাজানো সিরিয়াল অনুযায়ী টেবিলে রেন্ডার করা
+    // ৩. সাজানো সিরিয়াল অনুযায়ী টেবিলে রেন্ডার করা
     sortedMemberIds.forEach(memberId => {
         const items = groupedDeposits[memberId];
         
@@ -421,19 +455,29 @@ function renderDeposits() {
             </tr>
         `;
 
-        // ওই মেম্বারের সব জমার লিস্ট (তারিখ অনুযায়ী নতুনটা উপরে দেখাবে)
-        const sortedItems = items.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // --- ম্যাজিক আপডেট: একদম লেটেস্ট এন্ট্রি সবার উপরে রাখার লজিক ---
+        const sortedItems = items.sort((a, b) => {
+            const dateDiff = new Date(b.date) - new Date(a.date);
+            if (dateDiff !== 0) return dateDiff; // যদি তারিখ আলাদা হয়, তবে তারিখ অনুযায়ী সাজাবে
+            
+            // যদি তারিখ একই হয়, তবে ডাটাবেসে সেভ হওয়া লেটেস্ট আইডি (Time) অনুযায়ী সাজাবে
+            return String(b._id).localeCompare(String(a._id));
+        });
         
         sortedItems.forEach(entry => {
             const dateObj = new Date(entry.date);
             const niceDate = dateObj.toLocaleDateString('en-GB'); 
             const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
 
+            const isRefund = entry.amount < 0; 
+            const typeText = isRefund ? '<span class="text-danger fw-bold"><i class="bi bi-arrow-return-left me-1"></i> Refund</span>' : 'Cash In';
+            const amountColor = isRefund ? 'text-danger' : 'text-success';
+
             tbody.innerHTML += `
                 <tr>
                     <td class="text-muted small ps-4">↳ ${niceDate} <span class="text-secondary" style="font-size: 0.75rem;">(${dayName})</span></td>
-                    <td class="text-muted small">Cash In</td>
-                    <td class="text-end fw-bold text-success">৳${entry.amount}</td>
+                    <td class="text-muted small">${typeText}</td>
+                    <td class="text-end fw-bold ${amountColor}">৳${entry.amount}</td>
                     <td class="text-end">
                         <button onclick="deleteDeposit('${entry._id}')" class="btn btn-sm btn-outline-danger" title="Delete">
                             <i class="bi bi-trash"></i>
@@ -677,7 +721,7 @@ function renderMealTables() {
                         <td class="small text-muted border-0" style="max-width: 300px;">${memberNames}</td>
                         <td class="border-0"><span class="badge bg-secondary">${meal.totalMeals}</span></td>
                         <td class="text-end border-0" style="min-width: 90px;">
-                            <button onclick="openEditMealModal('${meal._id}')" class="btn btn-sm btn-outline-primary me-1" title="Edit Meal">
+                            <button onclick="openEditMealModal(this, '${meal._id}')" class="btn btn-sm btn-outline-primary me-1" title="Edit Meal">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button onclick="deleteMeal('${meal._id}')" class="btn btn-sm btn-outline-danger" title="Delete Meal">
@@ -696,7 +740,7 @@ function renderMealTables() {
                                 <span class="fw-bold text-dark me-1">Members:</span>${memberNames}
                             </div>
                             <div class="text-end">
-                                <button onclick="openEditMealModal('${meal._id}')" class="btn btn-sm btn-outline-primary me-2 px-3">
+                                <button onclick="openEditMealModal(this, '${meal._id}')" class="btn btn-sm btn-outline-primary me-2 px-3">
                                     <i class="bi bi-pencil"></i> Edit
                                 </button>
                                 <button onclick="deleteMeal('${meal._id}')" class="btn btn-sm btn-outline-danger px-3">
@@ -770,7 +814,7 @@ function renderBazarTable() {
                     <td class="text-muted small">${entry.note || ''}</td>
                     <td class="text-end fw-bold text-danger">৳${entry.amount}</td>
                     <td class="text-end">
-                        <button onclick="openEditBazarModal('${entry._id}', '${rawDate}', '${safeItem}', ${entry.amount}, '${safeNote}')" class="btn btn-sm btn-outline-primary me-1" title="Edit">
+                        <button onclick="openEditBazarModal(this, '${entry._id}', '${rawDate}', '${safeItem}', ${entry.amount}, '${safeNote}')" class="btn btn-sm btn-outline-primary me-1" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button onclick="deleteBazar('${entry._id}')" class="btn btn-sm btn-outline-danger" title="Delete">
@@ -899,13 +943,16 @@ function renderReportTable() {
 
 // --- SUBMIT ACTIONS (POST/PUT/DELETE) ---
 
-// Edit Member
-function openEditMemberModal(id, name, room) {
+// 1. Edit Member Modal
+function openEditMemberModal(btn, id, name, room) {
+    activeEditBtn = btn; // ম্যাজিক: ক্লিক করা বাটনটি সেভ করে রাখলাম
     document.getElementById('edit-member-id').value = id;
     document.getElementById('edit-member-name').value = name;
     document.getElementById('edit-member-room').value = room;
     new bootstrap.Modal(document.getElementById('editMemberModal')).show();
 }
+
+// Edit Member
 
 document.getElementById('form-edit-member').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -913,39 +960,38 @@ document.getElementById('form-edit-member').addEventListener('submit', async (e)
     const name = document.getElementById('edit-member-name').value;
     const room = document.getElementById('edit-member-room').value;
 
-    const res = await fetch(`${API_BASE_URL}/members/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, room })
-    });
-    
-    if (res.ok) {
-        bootstrap.Modal.getInstance(document.getElementById('editMemberModal')).hide();
-        await loadAllData(); 
-        alert('Member updated successfully!');
+    // ১. সাথে সাথে বক্সটি বন্ধ করে দেওয়া
+    bootstrap.Modal.getInstance(document.getElementById('editMemberModal')).hide();
+
+    // ২. ব্যাকগ্রাউন্ডের পেন আইকনে স্পিনার ঘুরানো
+    if (activeEditBtn) {
+        activeEditBtn.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+        activeEditBtn.disabled = true;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/members/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, room })
+        });
+        
+        if (res.ok) {
+            await loadAllData(); // ডেটা রিলোড হলে টেবিল নতুন করে তৈরি হবে এবং স্পিনার নিজে থেকেই গায়েব হয়ে যাবে
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'Member Updated!' });
+        } else {
+            Swal.fire('Error!', 'আপডেট করতে সমস্যা হয়েছে।', 'error');
+            if (activeEditBtn) { activeEditBtn.innerHTML = '<i class="bi bi-pencil"></i>'; activeEditBtn.disabled = false; }
+        }
+    } catch (error) {
+        Swal.fire('Error!', 'নেটওয়ার্ক সমস্যা!', 'error');
+        if (activeEditBtn) { activeEditBtn.innerHTML = '<i class="bi bi-pencil"></i>'; activeEditBtn.disabled = false; }
     }
 });
 
-// Delete Meal (For quick editing)
-async function deleteMeal(id) {
-    if (!confirm('Are you sure you want to delete this meal? You can re-add it from the form above.')) return;
-    const res = await fetch(`${API_BASE_URL}/meals/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-        await loadAllData();
-        alert('Meal deleted!');
-    }
-}
 
-// Add Forms
-document.getElementById('form-add-member').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const res = await fetch(`${API_BASE_URL}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: e.target[0].value, room: e.target[1].value })
-    });
-    if (res.ok) { e.target.reset(); await loadAllData(); alert('Member added!'); }
-});
+
 
 document.getElementById('form-add-meal').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -953,32 +999,142 @@ document.getElementById('form-add-meal').addEventListener('submit', async (e) =>
     const mealType = e.target.querySelector('select').value;
     const members = Array.from(document.querySelectorAll('.meal-checkbox:checked')).map(cb => cb.value);
 
-    if (members.length === 0) return alert('Select at least one member.');
+    // মেম্বার সিলেক্ট না করলে প্রফেশনাল ওয়ার্নিং
+    if (members.length === 0) {
+        Swal.fire('Oops!', 'আপনাকে অন্তত একজন মেম্বার সিলেক্ট করতে হবে।', 'warning');
+        return;
+    }
 
-    const res = await fetch(`${API_BASE_URL}/meals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, mealType, members })
-    });
-    if (res.ok) { e.target.reset(); setDefaultDates(); await loadAllData(); alert('Meal entry saved!'); }
+    // বাটন সিলেক্ট করা এবং লোডিং অ্যানিমেশন দেওয়া
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/meals`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, mealType, members })
+        });
+        
+        if (res.ok) { 
+            e.target.reset(); 
+            setDefaultDates(); 
+            await loadAllData(); 
+            // এখান থেকে বিরক্তিকর alert('Meal entry saved!'); লাইনটি সরিয়ে দেওয়া হয়েছে
+            
+            // ছোট্ট একটি নোটিফিকেশন (Toast) দেখাতে চাইলে নিচের লাইনটি রাখতে পারেন, নাহলে কেটে দিতে পারেন। 
+            // এটি স্ক্রিনের কোণায় আসবে, ইউজারকে ডিস্টার্ব করবে না।
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'Meal Saved!' });
+        } else {
+            Swal.fire('Error!', 'মিল সেভ করতে সমস্যা হয়েছে।', 'error');
+        }
+    } catch (error) {
+        console.error("Error saving meal:", error);
+        Swal.fire('Error!', 'ইন্টারনেট কানেকশন বা সার্ভারে সমস্যা আছে!', 'error');
+    } finally {
+        // ডেটা সেভ হওয়ার পর বাটন আবার আগের অবস্থায় ফিরিয়ে আনা
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+    }
 });
 
+
+// ==========================================
+// --- ADD MEMBER & ADD BAZAR (WITH ANIMATION) ---
+// ==========================================
+
+// Add Member
+document.getElementById('form-add-member').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // বাটন সিলেক্ট করা এবং লোডিং অ্যানিমেশন দেওয়া
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: e.target[0].value, room: e.target[1].value })
+        });
+        
+        if (res.ok) { 
+            e.target.reset(); 
+            await loadAllData(); 
+            
+            // সাকসেস টোস্ট অ্যানিমেশন (কোনো পপআপ ছাড়া)
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'Member Added!' });
+        } else {
+            Swal.fire('Error!', 'মেম্বার অ্যাড করতে সমস্যা হয়েছে।', 'error');
+        }
+    } catch (error) {
+        console.error("Error adding member:", error);
+        Swal.fire('Error!', 'ইন্টারনেট কানেকশন বা সার্ভারে সমস্যা আছে!', 'error');
+    } finally {
+        // কাজ শেষ হলে বাটন আগের অবস্থায় ফিরিয়ে আনা
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+    }
+});
+
+// Add Bazar
+// ==========================================
+// --- ADD BAZAR (Without Note & With Animation) ---
+// ==========================================
 document.getElementById('form-add-bazar').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const res = await fetch(`${API_BASE_URL}/bazar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: e.target[0].value, item: e.target[1].value, amount: Number(e.target[2].value), note: e.target[3].value })
-    });
-    if (res.ok) { e.target.reset(); setDefaultDates(); await loadAllData(); alert('Bazar entry saved!'); }
+    
+    // ম্যাজিক ফিক্স: Note ছাড়াই শুধু Date, Item এবং Amount নেওয়া হচ্ছে
+    const dateVal = e.target.querySelector('input[type="date"]').value;
+    const itemVal = document.getElementById('bazar-item-name').value; // Tom Select এর ID
+    const amountVal = Number(e.target.querySelector('input[type="number"]').value);
+
+    // বাটন সিলেক্ট করা এবং লোডিং অ্যানিমেশন দেওয়া
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        // note ছাড়াই ডেটা ডাটাবেসে পাঠানো হচ্ছে
+        const res = await fetch(`${API_BASE_URL}/bazar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: dateVal, item: itemVal, amount: amountVal }) 
+        });
+        
+        if (res.ok) { 
+            e.target.reset(); 
+            
+            // Tom Select এর বক্সটি আগের অবস্থায় (ফাঁকা) ফিরিয়ে আনার ম্যাজিক
+            const tomSelectEl = document.getElementById('bazar-item-name');
+            if(tomSelectEl && tomSelectEl.tomselect) {
+                tomSelectEl.tomselect.clear();
+            }
+
+            setDefaultDates(); 
+            await loadAllData(); 
+            
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'Bazar Saved!' });
+        } else {
+            Swal.fire('Error!', 'বাজার সেভ করতে সমস্যা হয়েছে।', 'error');
+        }
+    } catch (error) {
+        console.error("Error saving bazar:", error);
+        Swal.fire('Error!', 'ইন্টারনেট কানেকশন বা সার্ভারে সমস্যা আছে!', 'error');
+    } finally {
+        // কাজ শেষ হলে বাটন আগের অবস্থায় ফিরিয়ে আনা
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+    }
 });
-
-async function deleteMember(id) {
-    if (!confirm('Are you sure you want to delete this member?')) return;
-    const res = await fetch(`${API_BASE_URL}/members/${id}`, { method: 'DELETE' });
-    if (res.ok) await loadAllData();
-}
-
 
 // Add Deposit Submit
 document.getElementById('form-add-deposit').addEventListener('submit', async (e) => {
@@ -987,32 +1143,55 @@ document.getElementById('form-add-deposit').addEventListener('submit', async (e)
     const member = document.getElementById('deposit-member').value;
     const amount = Number(document.getElementById('deposit-amount').value);
 
-    const res = await fetch(`${API_BASE_URL}/deposits`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, member, amount })
-    });
-    if (res.ok) { e.target.reset(); setDefaultDates(); await loadAllData(); alert('Deposit saved!'); }
+    // সাবমিট বাটনটি সিলেক্ট করা এবং আগের লেখা সেভ করে রাখা
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+
+    // বাটনে লোডিং স্পিনার দেখানো এবং বাটন ডিজেবল করা (যাতে ডাবল ক্লিক না হয়)
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/deposits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, member, amount })
+        });
+        
+        if (res.ok) { 
+            e.target.reset(); 
+            setDefaultDates(); 
+            await loadAllData(); 
+            // এখান থেকে alert('Deposit saved!'); লাইনটি সরিয়ে দেওয়া হয়েছে
+        } else {
+            alert('❌ ডেপোজিট সেভ করতে সমস্যা হয়েছে!');
+        }
+    } catch (error) {
+        console.error("Error saving deposit:", error);
+        alert('ইন্টারনেট কানেকশন বা সার্ভারে সমস্যা আছে!');
+    } finally {
+        // ডেটা সেভ হওয়ার পর বাটন আবার আগের অবস্থায় ফিরিয়ে আনা
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+    }
 });
 
-// Delete Deposit
-async function deleteDeposit(id) {
-    if (!confirm('Are you sure you want to delete this deposit entry?')) return;
-    const res = await fetch(`${API_BASE_URL}/deposits/${id}`, { method: 'DELETE' });
-    if (res.ok) await loadAllData();
-}
+
 
 // --- BAZAR EDIT & DELETE LOGIC ---
 
-function openEditBazarModal(id, date, item, amount, note) {
+// 2. Edit Bazar Modal
+function openEditBazarModal(btn, id, date, item, amount, note) {
+    activeEditBtn = btn; // ম্যাজিক: ক্লিক করা বাটনটি সেভ করে রাখলাম
     document.getElementById('edit-bazar-id').value = id;
     document.getElementById('edit-bazar-date').value = date;
     document.getElementById('edit-bazar-item').value = item;
     document.getElementById('edit-bazar-amount').value = amount;
-    // যদি note undefined থাকে, তবে ইনপুট বক্স ফাঁকা দেখাবে
     document.getElementById('edit-bazar-note').value = (note !== 'undefined' && note !== 'null') ? note : '';
     new bootstrap.Modal(document.getElementById('editBazarModal')).show();
 }
+
+// Edit Bazar
 
 const formEditBazar = document.getElementById('form-edit-bazar');
 if (formEditBazar) {
@@ -1024,29 +1203,35 @@ if (formEditBazar) {
         const amount = Number(document.getElementById('edit-bazar-amount').value);
         const note = document.getElementById('edit-bazar-note').value;
 
-        const res = await fetch(`${API_BASE_URL}/bazar/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date, item, amount, note })
-        });
-        
-        if (res.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('editBazarModal')).hide();
-            await loadAllData(); 
-            alert('Bazar entry updated successfully!');
-        } else {
-            alert('Failed to update. Please check the console.');
+        // ১. সাথে সাথে বক্সটি বন্ধ করে দেওয়া
+        bootstrap.Modal.getInstance(document.getElementById('editBazarModal')).hide();
+
+        // ২. ব্যাকগ্রাউন্ডের পেন আইকনে স্পিনার ঘুরানো
+        if (activeEditBtn) {
+            activeEditBtn.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+            activeEditBtn.disabled = true;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/bazar/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, item, amount, note })
+            });
+            
+            if (res.ok) {
+                await loadAllData(); 
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Toast.fire({ icon: 'success', title: 'Bazar Updated!' });
+            } else {
+                Swal.fire('Error!', 'Failed to update.', 'error');
+                if (activeEditBtn) { activeEditBtn.innerHTML = '<i class="bi bi-pencil"></i>'; activeEditBtn.disabled = false; }
+            }
+        } catch (error) {
+            Swal.fire('Error!', 'Network issue!', 'error');
+            if (activeEditBtn) { activeEditBtn.innerHTML = '<i class="bi bi-pencil"></i>'; activeEditBtn.disabled = false; }
         }
     });
-}
-
-async function deleteBazar(id) {
-    if (!confirm('Are you sure you want to delete this Bazar entry?')) return;
-    const res = await fetch(`${API_BASE_URL}/bazar/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-        await loadAllData();
-        alert('Bazar entry deleted!');
-    }
 }
 
 // --- PDF DOWNLOAD LOGIC ---
@@ -1122,68 +1307,20 @@ function downloadTodaysMealsPhoto() {
         });
 }
 
-// --- আজকের সব মিল ডিলিট করার লজিক ---
-async function clearTodaysMeals() {
-    // আজকের তারিখ নির্ধারণ
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(now.getTime() - offset)).toISOString().split('T')[0];
-
-    // আজকের তারিখের মিলগুলো খুঁজে বের করা
-    const todaysMeals = state.meals.filter(meal => meal.date.startsWith(localISOTime));
-
-    if (todaysMeals.length === 0) {
-        alert("আজকের তালিকায় কোনো মিল নেই!");
-        return;
-    }
-
-    // ইউজারের কাছ থেকে কনফার্মেশন নেওয়া
-    if (confirm(`আপনি কি নিশ্চিত যে আজকের সব মিল (${todaysMeals.length} টি এন্ট্রি) ডিলিট করতে চান?`)) {
-        try {
-            // একে একে সব মিল সার্ভার থেকে ডিলিট করা
-            for (const meal of todaysMeals) {
-                await fetch(`${API_BASE_URL}/meals/${meal._id}`, { method: 'DELETE' });
-            }
-            
-            alert("আজকের সব মিল সফলভাবে ডিলিট করা হয়েছে।");
-            loadAllData(); // ডেটা রিলোড করে টেবিল আপডেট করা
-        } catch (error) {
-            console.error("Error clearing meals:", error);
-            alert("ডিলিট করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
-        }
-    }
-}
-
-
-// পেজ লোড হওয়ার সময় ডিফল্ট তারিখ সেট করা
-document.addEventListener('DOMContentLoaded', () => {
-    const mealDateInput = document.getElementById('meal-date');
-    
-    if (mealDateInput) {
-        // বাংলাদেশ সময় অনুযায়ী আজকের তারিখ বের করা (YYYY-MM-DD ফরম্যাট)
-        const now = new Date();
-        const offset = now.getTimezoneOffset() * 60000;
-        const localDate = new Date(now.getTime() - offset).toISOString().split('T')[0];
-        
-        // তারিখটি ইনপুট বক্সে বসিয়ে দেওয়া
-        mealDateInput.value = localDate;
-    }
-});
-
 
 // --- MEAL EDIT LOGIC ---
 
 // এডিট পপ-আপ ওপেন করা এবং আগের ডেটা বসানো
-function openEditMealModal(mealId) {
+// 3. Edit Meal Modal
+function openEditMealModal(btn, mealId) {
+    activeEditBtn = btn; // ম্যাজিক: ক্লিক করা বাটনটি সেভ করে রাখলাম
     const meal = state.meals.find(m => m._id === mealId);
     if (!meal) return;
 
-    // ফর্মের ভেতরে আগের ডেটা বসানো
     document.getElementById('edit-meal-id').value = meal._id;
     document.getElementById('edit-meal-date').value = meal.date.split('T')[0];
     document.getElementById('edit-meal-type').value = meal.mealType;
 
-    // মেম্বারদের চেকবক্স তৈরি করা এবং যারা এই মিলে আছে তাদের টিক (✅) দেওয়া
     const memberListDiv = document.getElementById('edit-meal-member-list');
     memberListDiv.innerHTML = '';
     
@@ -1205,11 +1342,11 @@ function openEditMealModal(mealId) {
         `;
     });
     
-    // পপ-আপ শো করা
     new bootstrap.Modal(document.getElementById('editMealModal')).show();
 }
 
-// আপডেট করা ডেটা সেভ করা
+// আপডেট করা মিল সেভ করা
+
 async function saveEditedMeal(event) {
     event.preventDefault();
     
@@ -1217,17 +1354,24 @@ async function saveEditedMeal(event) {
     const date = document.getElementById('edit-meal-date').value;
     const mealType = document.getElementById('edit-meal-type').value;
     
-    // কোন কোন মেম্বার সিলেক্ট করা হয়েছে তা বের করা
     const checkboxes = document.querySelectorAll('.edit-meal-member-checkbox:checked');
     const members = Array.from(checkboxes).map(cb => cb.value);
 
     if (members.length === 0) {
-        alert("আপডেট করার জন্য অন্তত একজন মেম্বার সিলেক্ট করতে হবে!");
+        Swal.fire('Oops!', 'আপডেট করার জন্য অন্তত একজন মেম্বার সিলেক্ট করতে হবে!', 'warning');
         return;
     }
 
+    // ১. সাথে সাথে বক্সটি বন্ধ করে দেওয়া
+    bootstrap.Modal.getInstance(document.getElementById('editMealModal')).hide();
+
+    // ২. ব্যাকগ্রাউন্ডের পেন আইকনে স্পিনার ঘুরানো
+    if (activeEditBtn) {
+        activeEditBtn.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+        activeEditBtn.disabled = true;
+    }
+
     try {
-        // API-তে আপডেট রিকোয়েস্ট পাঠানো
         const response = await fetch(`${API_BASE_URL}/meals/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -1235,18 +1379,19 @@ async function saveEditedMeal(event) {
         });
 
         if (response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('editMealModal')).hide();
-            alert("মিল এন্ট্রি সফলভাবে আপডেট হয়েছে!");
-            loadAllData(); // পুরো টেবিল রিফ্রেশ করা
+            await loadAllData(); 
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'Meal Updated!' });
         } else {
-            alert("আপডেট করতে সমস্যা হয়েছে।");
+            Swal.fire('Error!', 'আপডেট করতে সমস্যা হয়েছে।', 'error');
+            if (activeEditBtn) { activeEditBtn.innerHTML = '<i class="bi bi-pencil"></i>'; activeEditBtn.disabled = false; }
         }
     } catch (error) {
         console.error("Error updating meal:", error);
-        alert("নেটওয়ার্ক সমস্যা! দয়া করে আবার চেষ্টা করুন।");
+        Swal.fire('Error!', 'নেটওয়ার্ক সমস্যা! দয়া করে আবার চেষ্টা করুন।', 'error');
+        if (activeEditBtn) { activeEditBtn.innerHTML = '<i class="bi bi-pencil"></i>'; activeEditBtn.disabled = false; }
     }
 }
-
 
 // --- BALANCE TABLE LOGIC ---
 function renderBalanceTable() {
@@ -1420,5 +1565,264 @@ function downloadLowBalanceImage() {
         if (actionBox) actionBox.style.display = 'flex';
         console.error("Image generation failed:", err);
         alert("ছবি ডাউনলোড করতে সমস্যা হয়েছে।");
+    });
+}
+
+
+// ==========================================
+// --- REFUND MONEY LOGIC (AUTO MINUS) ---
+// ==========================================
+
+// মেম্বার লিস্ট আপডেট করার ফাংশন
+const originalRenderDepositSelect = typeof renderDepositSelect === 'function' ? renderDepositSelect : function(){};
+renderDepositSelect = function() {
+    originalRenderDepositSelect(); // আগের ফাংশনটি কল করা হলো
+    const refundSelect = document.getElementById('refund-member');
+    if (refundSelect && state.members) {
+        let options = '<option value="" disabled selected>-- মেম্বার সিলেক্ট করুন --</option>';
+        state.members.filter(m => m.isActive).forEach(m => {
+            options += `<option value="${m._id}">${m.name} (${m.room})</option>`;
+        });
+        refundSelect.innerHTML = options;
+    }
+};
+
+// রিফান্ড ফর্ম সাবমিট করার লজিক
+document.addEventListener("DOMContentLoaded", () => {
+    const refundForm = document.getElementById('form-refund-money');
+    if (refundForm) {
+        // আজকের তারিখ ডিফল্টভাবে বসানো
+        const today = new Date();
+        const offset = today.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(today.getTime() - offset)).toISOString().split('T')[0];
+        const dateInput = document.getElementById('refund-date');
+        if (dateInput) dateInput.value = localISOTime;
+
+        refundForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const date = document.getElementById('refund-date').value;
+            const memberId = document.getElementById('refund-member').value;
+            const amountVal = document.getElementById('refund-amount').value;
+            
+            // ম্যাজিক: পজিটিভ নাম্বারকে অটোমেটিক মাইনাস (-) করে দেওয়া
+            const autoMinusAmount = -Math.abs(Number(amountVal));
+            
+            // সাবমিট বাটনে লোডিং দেখানো
+            const submitBtn = refundForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Processing...';
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('https://mess-backend-pg3z.onrender.com/api/deposits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, member: memberId, amount: autoMinusAmount }) // মাইনাস ডেটা পাঠানো হলো
+                });
+                
+                if (res.ok) {
+                    // এখান থেকে alert মেসেজটি পুরোপুরি সরিয়ে দেওয়া হয়েছে
+                    refundForm.reset();
+                    if (dateInput) dateInput.value = localISOTime;
+                    await loadAllData(); // ডেটা রিলোড করে ব্যালেন্স আপডেট করা
+                } else {
+                    const err = await res.json();
+                    alert(`❌ সমস্যা হয়েছে: ${err.message || 'Refund failed'}`);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('ইন্টারনেট কানেকশন বা সার্ভারে সমস্যা আছে!');
+            } finally {
+                // কাজ শেষ হলে বাটন আগের অবস্থায় ফিরে আসবে
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+});
+
+
+// ==========================================
+// --- PROFESSIONAL POPUPS (SWEETALERT2) ---
+// ==========================================
+
+// Logout Confirm
+function toggleLogin() {
+    if (isManager) {
+        Swal.fire({
+            title: 'Logout?',
+            text: "Are you sure you want to Logout?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Logout'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                localStorage.setItem('isManager', 'false');
+                isManager = false;
+                applyAuthRules();
+                Swal.fire({ title: 'Logged Out', icon: 'success', timer: 1500, showConfirmButton: false });
+            }
+        });
+    } else {
+        document.getElementById('manager-pin').value = '';
+        new bootstrap.Modal(document.getElementById('loginModal')).show();
+    }
+}
+
+// Delete Member
+function deleteMember(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "This member will be deleted permanently!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true, // বাটনে লোডিং অ্যানিমেশন চালু করবে
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/members/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Server Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সার্ভারে সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading() // লোডিং চলাকালীন বাইরে ক্লিক করলে পপআপ কাটবে না
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Member has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
+
+// Delete Meal
+function deleteMeal(id) {
+    Swal.fire({
+        title: 'Delete this meal?',
+        text: "You can re-add it from the form above.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/meals/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Meal entry has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
+
+// Delete Bazar
+function deleteBazar(id) {
+    Swal.fire({
+        title: 'Delete Bazar Entry?',
+        text: "This will remove the expense from the total calculation.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/bazar/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Bazar entry has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
+
+// Delete Deposit
+function deleteDeposit(id) {
+    Swal.fire({
+        title: 'Delete Deposit/Refund?',
+        text: "This will directly affect the member's balance.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/deposits/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Entry has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
+
+// Clear Today's Meals
+function clearTodaysMeals() {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now.getTime() - offset)).toISOString().split('T')[0];
+    const todaysMeals = state.meals.filter(meal => meal.date.startsWith(localISOTime));
+
+    if (todaysMeals.length === 0) {
+        Swal.fire('Oops!', 'আজকের তালিকায় কোনো মিল নেই!', 'info');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Clear All Meals?',
+        text: `আপনি কি নিশ্চিত যে আজকের সব মিল (${todaysMeals.length} টি এন্ট্রি) ডিলিট করতে চান?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, clear all!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                for (const meal of todaysMeals) {
+                    await fetch(`${API_BASE_URL}/meals/${meal._id}`, { method: 'DELETE' });
+                }
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('ডিলিট করতে সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Cleared!', text: 'আজকের সব মিল সফলভাবে ডিলিট করা হয়েছে।', icon: 'success', timer: 2000, showConfirmButton: false });
+        }
     });
 }
