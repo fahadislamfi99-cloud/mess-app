@@ -1,0 +1,806 @@
+// স্ক্রিনের সব জায়গায় প্রিমিয়াম লোডিং অ্যানিমেশন দেখানোর ফাংশন
+function showLoadingSpinners() {
+    // ১. ড্যাশবোর্ডের জন্য আসল Facebook/Netflix স্টাইলের Shimmer CSS অ্যাড করা
+    if (!document.getElementById('premium-skeleton-style')) {
+        const style = document.createElement('style');
+        style.id = 'premium-skeleton-style';
+        style.innerHTML = `
+            .premium-shimmer {
+                display: inline-block;
+                width: 75px;
+                height: 20px;
+                border-radius: 50rem;
+                background: #e2e8f0;
+                background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+                background-size: 200% 100%;
+                animation: premiumShimmer 1.5s infinite;
+                vertical-align: middle;
+            }
+            @keyframes premiumShimmer {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // টেবিলের জন্য সুন্দর Pulse (Grow) অ্যানিমেশন
+    const tableLoader = `<tr><td colspan="10" class="text-center py-5 border-0">
+                            <div class="spinner-grow text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                            <h5 class="text-muted fw-bold mb-1">Fetching Data...</h5>
+                            <small class="text-secondary">Please wait a moment while data is loading</small>
+                         </td></tr>`;
+
+    const divLoader = `<div class="text-center py-5">
+                            <div class="spinner-grow text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                            <h5 class="text-muted fw-bold mb-1">Loading...</h5>
+                       </div>`;
+
+    // সব টেবিলের ভেতরে লোডিং দেখানো
+    const tables = ['table-members', 'table-deposits', 'table-meal-history', 'table-bazar', 'table-report', 'table-balance', 'table-low-balance'];
+    tables.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = tableLoader;
+    });
+
+    // অন্যান্য কন্টেইনারে লোডিং দেখানো
+    const containers = ['today-meals-container', 'dashboard-today-meals-container', 'meal-member-list'];
+    containers.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = divLoader;
+    });
+
+    // ড্যাশবোর্ডের সংখ্যাগুলোর জন্য নতুন premium-shimmer ব্যবহার করা
+    const skeletonLoader = `<span class="premium-shimmer ms-1"></span>`;
+
+    const stats = ['stat-members', 'stat-meals', 'stat-expense', 'stat-rate', 'stat-deposit', 'stat-cash'];
+    stats.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = skeletonLoader;
+    });
+}
+
+// --- RENDERING ---
+function renderAll() {
+    renderDashboard(); renderMembersTable(); renderMealChecklist(); renderMealTables();
+    renderBazarTable(); renderDeposits(); renderDepositSelect(); renderReportTable();
+    renderManagerSelection(); renderBalanceTable(); renderLowBalanceAlert();
+}
+
+function renderDashboard() {
+    const activeMembers = state.members.filter(m => m.isActive).length;
+    const totalExpense = state.report.totalExpense || 0;
+
+    document.getElementById('stat-members').innerText = activeMembers;
+    document.getElementById('stat-meals').innerText = state.report.totalMeals || 0;
+    document.getElementById('stat-expense').innerText = totalExpense;
+    document.getElementById('stat-rate').innerText = (state.report.mealRate || 0).toFixed(2);
+
+    // ১. মোট জমা হিসাব করা
+    const totalDeposited = state.deposits.reduce((sum, d) => sum + d.amount, 0);
+    document.getElementById('stat-deposit').innerText = totalDeposited;
+
+    // ২. ম্যানেজারের কাছে থাকা ব্যালেন্স হিসাব করা
+    const cashInHand = totalDeposited - totalExpense;
+    const cashEl = document.getElementById('stat-cash');
+    const cashTitle = document.getElementById('title-cash');
+    const cashTextContainer = document.getElementById('text-cash');
+    const cashCard = document.getElementById('card-cash');
+
+    // যদি ব্যালেন্স মাইনাস হয় (ম্যানেজার নিজের পকেট থেকে খরচ করেছেন)
+    if (cashInHand < 0) {
+        cashEl.innerText = Math.abs(cashInHand); // মাইনাস চিহ্ন না দেখিয়ে পজিটিভ দেখাবে
+        cashTitle.innerText = "Manager's Due (ম্যানেজার পাবে)";
+        cashTitle.className = "text-danger mb-1 fw-bold";
+        cashTextContainer.className = "mb-0 text-danger";
+        cashCard.classList.replace('border-dark', 'border-danger');
+        cashCard.classList.replace('border-success', 'border-danger');
+    }
+    // যদি ব্যালেন্স প্লাস হয় (ম্যানেজারের হাতে টাকা আছে)
+    else {
+        cashEl.innerText = cashInHand;
+        cashTitle.innerText = "Cash in Hand (ক্যাশ আছে)";
+        cashTitle.className = "text-success mb-1 fw-bold";
+        cashTextContainer.className = "mb-0 text-success";
+        cashCard.classList.replace('border-dark', 'border-success');
+        cashCard.classList.replace('border-danger', 'border-success');
+    }
+}
+
+// মেম্বার লিস্ট রেন্ডার ও Edit বাটন যোগ করা
+function renderMembersTable() {
+    const tbody = document.getElementById('table-members');
+    tbody.innerHTML = '';
+    state.members.forEach(member => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><div class="fw-bold">${member.name}</div></td>
+            <td>${member.room}</td>
+            <td><span class="badge ${member.isActive ? 'bg-success' : 'bg-secondary'}">${member.isActive ? 'Active' : 'Inactive'}</span></td>
+            <td class="text-end">
+                <button onclick="openEditMemberModal(this, '${member._id}', '${member.name}', '${member.room}')" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></button>
+                <button onclick="deleteMember('${member._id}')" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderDeposits() {
+    const tbody = document.getElementById('table-deposits') || document.getElementById('table-deposit');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (state.deposits.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No deposits found for this month.</td></tr>`;
+        return;
+    }
+
+    // ১. ডেপোজিটগুলোকে মেম্বার অনুযায়ী গ্রুপ (Group) করা
+    const groupedDeposits = {};
+    state.deposits.forEach(entry => {
+        const memberId = entry.member._id || entry.member;
+        if (!groupedDeposits[memberId]) {
+            groupedDeposits[memberId] = [];
+        }
+        groupedDeposits[memberId].push(entry);
+    });
+
+    // ২. রুম নাম্বার অনুযায়ী লিস্টটিকে সাজানো (Sorting)
+    const sortedMemberIds = Object.keys(groupedDeposits).sort((idA, idB) => {
+        const memberA = state.members.find(m => m._id === idA);
+        const memberB = state.members.find(m => m._id === idB);
+        const roomA = memberA ? String(memberA.room) : '';
+        const roomB = memberB ? String(memberB.room) : '';
+        return roomA.localeCompare(roomB, undefined, { numeric: true });
+    });
+
+    // ৩. সাজানো সিরিয়াল অনুযায়ী টেবিলে রেন্ডার করা
+    sortedMemberIds.forEach(memberId => {
+        const items = groupedDeposits[memberId];
+
+        const memberObj = state.members.find(m => m._id === memberId);
+        const memberName = memberObj ? memberObj.name : 'Unknown Member';
+        const roomNum = memberObj ? memberObj.room : 'N/A';
+
+        const memberTotal = items.reduce((sum, current) => sum + current.amount, 0);
+
+        // মেম্বারের জন্য একটি হাইলাইটেড সারি (Header Row)
+        tbody.innerHTML += `
+            <tr class="table-light border-bottom border-success">
+                <td colspan="2" class="fw-bold text-success">
+                    <i class="bi bi-person-check me-2"></i>${memberName} <span class="text-secondary small ms-1">(Room: ${roomNum})</span>
+                </td>
+                <td class="text-end fw-bold text-dark">Total: ৳${memberTotal}</td>
+                <td></td>
+            </tr>
+        `;
+
+        // --- ম্যাজিক আপডেট: একদম লেটেস্ট এন্ট্রি সবার উপরে রাখার লজিক ---
+        const sortedItems = items.sort((a, b) => {
+            const dateDiff = new Date(b.date) - new Date(a.date);
+            if (dateDiff !== 0) return dateDiff; // যদি তারিখ আলাদা হয়, তবে তারিখ অনুযায়ী সাজাবে
+
+            // যদি তারিখ একই হয়, তবে ডাটাবেসে সেভ হওয়া লেটেস্ট আইডি (Time) অনুযায়ী সাজাবে
+            return String(b._id).localeCompare(String(a._id));
+        });
+
+        sortedItems.forEach(entry => {
+            const dateObj = new Date(entry.date);
+            const niceDate = dateObj.toLocaleDateString('en-GB');
+            const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
+
+            const isRefund = entry.amount < 0;
+            const typeText = isRefund ? '<span class="text-danger fw-bold"><i class="bi bi-arrow-return-left me-1"></i> Refund</span>' : 'Cash In';
+            const amountColor = isRefund ? 'text-danger' : 'text-success';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-muted small ps-4">↳ ${niceDate} <span class="text-secondary" style="font-size: 0.75rem;">(${dayName})</span></td>
+                    <td class="text-muted small">${typeText}</td>
+                    <td class="text-end fw-bold ${amountColor}">৳${entry.amount}</td>
+                    <td class="text-end">
+                        <button onclick="deleteDeposit('${entry._id}')" class="btn btn-sm btn-outline-danger" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+}
+
+function renderMealChecklist() {
+    const container = document.getElementById('meal-member-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const activeMembers = state.members.filter(m => m.isActive);
+    if (activeMembers.length === 0) {
+        container.innerHTML = `<p class="text-muted mb-0">No active members found.</p>`;
+        return;
+    }
+
+    // --- নতুন: Select All অপশন তৈরি করা ---
+    const selectAllDiv = document.createElement('div');
+    selectAllDiv.className = 'form-check mb-3 border-bottom pb-2';
+    selectAllDiv.innerHTML = `
+        <input class="form-check-input border-primary" type="checkbox" id="meal-select-all">
+        <label class="form-check-label w-100 cursor-pointer fw-bold text-primary" for="meal-select-all">
+            Select All Members
+        </label>
+    `;
+    container.appendChild(selectAllDiv);
+
+    // --- সাধারণ মেম্বারদের লিস্ট তৈরি করা ---
+    activeMembers.forEach(member => {
+        const div = document.createElement('div');
+        div.className = 'form-check mb-2';
+        div.innerHTML = `
+            <input class="form-check-input meal-checkbox" type="checkbox" value="${member._id}" id="meal-mem-${member._id}">
+            <label class="form-check-label w-100 cursor-pointer" for="meal-mem-${member._id}">
+                ${member.name} <span class="text-muted small">(${member.room})</span>
+            </label>
+        `;
+        container.appendChild(div);
+    });
+
+    const checkboxes = document.querySelectorAll('.meal-checkbox');
+    const selectAllCheckbox = document.getElementById('meal-select-all');
+
+    // কাউন্ট আপডেট করার ফাংশন
+    const updateCount = () => {
+        const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        document.getElementById('meal-count-preview').innerText = checkedCount;
+
+        // যদি সবাই সিলেক্টেড থাকে, তবে Select All বক্সে অটোমেটিক টিক পড়বে
+        if (checkedCount === checkboxes.length && checkboxes.length > 0) {
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.checked = false;
+        }
+    };
+
+    // --- নতুন: Select All বাটনে ক্লিক করার লজিক ---
+    selectAllCheckbox.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        checkboxes.forEach(cb => {
+            cb.checked = isChecked;
+        });
+        updateCount(); // কাউন্ট আপডেট হবে
+    });
+
+    // প্রতিটি মেম্বারের চেকবক্সে ক্লিক করলে কাউন্ট আপডেট হবে
+    checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+
+    updateCount(); // শুরুতে কাউন্ট ০ দেখানোর জন্য
+}
+
+function renderMealTables() {
+    const todayContainer = document.getElementById('today-meals-container');
+    const dashboardTodayContainer = document.getElementById('dashboard-today-meals-container');
+    const historyBody = document.getElementById('table-meal-history');
+
+    if (todayContainer) todayContainer.innerHTML = '';
+    if (dashboardTodayContainer) dashboardTodayContainer.innerHTML = '';
+    if (historyBody) historyBody.innerHTML = '';
+
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now.getTime() - offset)).toISOString().split('T')[0];
+
+    const todaysMeals = state.meals.filter(meal => meal.date.startsWith(localISOTime));
+    const previousMeals = state.meals;
+
+    // ==========================================
+    // ৩. Today's Meals টেবিল (অপরিবর্তিত)
+    // ==========================================
+    const groupedTodaysMeals = {};
+    todaysMeals.forEach(meal => {
+        if (!groupedTodaysMeals[meal.mealType]) {
+            groupedTodaysMeals[meal.mealType] = { type: meal.mealType, memberIds: [] };
+        }
+        const ids = meal.members.map(m => m._id || m);
+        groupedTodaysMeals[meal.mealType].memberIds.push(...ids);
+    });
+
+    const mealOrder = ["Sehri", "Breakfast", "Lunch", "Iftar", "Dinner"];
+    const sortedMealTypes = Object.keys(groupedTodaysMeals).sort((a, b) => {
+        let indexA = mealOrder.indexOf(a);
+        let indexB = mealOrder.indexOf(b);
+        if (indexA === -1) indexA = 999;
+        if (indexB === -1) indexB = 999;
+        return indexA - indexB;
+    });
+
+    let todayTableHTML = '';
+
+    if (todaysMeals.length === 0) {
+        todayTableHTML = `<p class="text-center text-muted mb-0">আজকের জন্য এখনও কোনো মিল এন্ট্রি করা হয়নি।</p>`;
+    } else {
+        const membersWithActiveMeals = state.members
+            .filter(m => m.isActive)
+            .filter(member => {
+                return todaysMeals.some(meal =>
+                    meal.members.some(m => (m._id || m) === member._id)
+                );
+            })
+            .sort((a, b) => String(a.room).localeCompare(String(b.room), undefined, { numeric: true }));
+
+        todayTableHTML = `
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle text-center bg-white mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ক্র.নং</th>
+                            <th class="text-start">নাম</th>
+                            <th>রুম</th>
+        `;
+
+        sortedMealTypes.forEach(type => {
+            todayTableHTML += `<th class="text-primary text-uppercase">${type}</th>`;
+        });
+
+        todayTableHTML += `</tr></thead><tbody>`;
+
+        membersWithActiveMeals.forEach((member, index) => {
+            todayTableHTML += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td class="text-start fw-bold">${member.name}</td>
+                    <td class="text-muted">${member.room}</td>
+            `;
+
+            sortedMealTypes.forEach(type => {
+                const mealCount = groupedTodaysMeals[type].memberIds.filter(id => id === member._id).length;
+
+                if (mealCount > 0) {
+                    const checkMarks = '✅'.repeat(mealCount);
+                    todayTableHTML += `<td><span class="text-success" style="font-size: 1.2rem; letter-spacing: 2px;">${checkMarks}</span></td>`;
+                } else {
+                    todayTableHTML += `<td><span class="text-danger" style="font-size: 1.2rem;">❌</span></td>`;
+                }
+            });
+
+            todayTableHTML += `</tr>`;
+        });
+
+        todayTableHTML += `</tbody></table></div>`;
+
+        if (todayContainer) {
+            todayTableHTML += `<p class="text-muted small mt-2 text-end">* মিল এডিট বা ডিলিট করতে নিচে Meal History সেকশন ব্যবহার করুন।</p>`;
+        }
+    }
+
+    if (todayContainer) todayContainer.innerHTML = todayTableHTML;
+    if (dashboardTodayContainer) dashboardTodayContainer.innerHTML = todayTableHTML;
+
+    // ==========================================
+    // ৪. Previous Meals (History) রেন্ডার করা (আপডেটেড উইথ প্যাজিনেশন)
+    // ==========================================
+    if (!historyBody) return;
+
+    if (previousMeals.length === 0) {
+        historyBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">এই মাসে কোনো আগের মিল খুঁজে পাওয়া যায়নি।</td></tr>`;
+    } else {
+        const groupedPreviousMeals = {};
+        previousMeals.forEach(meal => {
+            const dateStr = meal.date.split('T')[0];
+            if (!groupedPreviousMeals[dateStr]) {
+                groupedPreviousMeals[dateStr] = [];
+            }
+            groupedPreviousMeals[dateStr].push(meal);
+        });
+
+        const sortedDates = Object.keys(groupedPreviousMeals).sort((a, b) => new Date(b) - new Date(a));
+
+        // ম্যাজিক: সব ডেটার বদলে শুধু লিমিট অনুযায়ী ডেটা নেওয়া হচ্ছে
+        const datesToShow = sortedDates.slice(0, visibleMealLimit);
+
+        datesToShow.forEach(dateStr => {
+            const dateObj = new Date(dateStr);
+            const niceDate = dateObj.toLocaleDateString('en-GB');
+            const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
+
+            const mealsOnDate = groupedPreviousMeals[dateStr];
+            const dayTotalMeals = mealsOnDate.reduce((sum, currentMeal) => sum + currentMeal.totalMeals, 0);
+
+            const dailyBazars = state.bazar.filter(b => b.date.startsWith(dateStr));
+            const dailyExpense = dailyBazars.reduce((sum, b) => sum + b.amount, 0);
+            const dailyRate = dayTotalMeals > 0 ? (dailyExpense / dayTotalMeals) : 0;
+
+            mealsOnDate.sort((a, b) => {
+                let indexA = mealOrder.indexOf(a.mealType);
+                let indexB = mealOrder.indexOf(b.mealType);
+                if (indexA === -1) indexA = 999;
+                if (indexB === -1) indexB = 999;
+                return indexA - indexB;
+            });
+
+            // তারিখের হেডার (মোবাইল ও ডেস্কটপ উভয়ের জন্য রেস্পন্সিভ)
+            historyBody.innerHTML += `
+                <tr class="table-light border-bottom border-secondary">
+                    <td colspan="5" class="pb-2 pt-3 px-3">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                            <div class="fw-bold text-dark mb-2 mb-md-0 d-flex flex-wrap align-items-center gap-2 mt-1">
+                                <span><i class="bi bi-calendar-event text-primary me-1"></i>${niceDate} <span class="text-muted small">(${dayName})</span></span>
+                                <div>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger" title="Total Expense of this day">Expense: ৳${dailyExpense}</span>
+                                    <span class="badge bg-warning bg-opacity-25 text-dark border border-warning" title="Meal Rate of this day">Rate: ৳${dailyRate.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <div class="fw-bold text-primary mt-2 mt-md-0">Total Meals: ${dayTotalMeals}</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            mealsOnDate.forEach(meal => {
+                const memberNames = meal.members.map(m => {
+                    const found = state.members.find(sm => sm._id === (m._id || m));
+                    return found ? `${found.name} (${found.room})` : 'Unknown';
+                }).join(', ');
+
+                historyBody.innerHTML += `
+                    <tr class="d-none d-md-table-row">
+                        <td class="text-muted small ps-4 border-0">↳</td>
+                        <td class="text-secondary fw-bold border-0">${meal.mealType}</td>
+                        <td class="small text-muted border-0" style="max-width: 300px;">${memberNames}</td>
+                        <td class="border-0"><span class="badge bg-secondary">${meal.totalMeals}</span></td>
+                        <td class="text-end border-0" style="min-width: 90px;">
+                            <button onclick="openEditMealModal(this, '${meal._id}')" class="btn btn-sm btn-outline-primary me-1" title="Edit Meal">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button onclick="deleteMeal('${meal._id}')" class="btn btn-sm btn-outline-danger" title="Delete Meal">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    
+                    <tr class="d-md-none border-bottom">
+                        <td colspan="5" class="border-0 p-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-primary fw-bold fs-6">${meal.mealType}</span>
+                                <span class="badge bg-secondary rounded-pill">Total: ${meal.totalMeals}</span>
+                            </div>
+                            <div class="small text-muted mb-3 lh-base" style="word-break: break-word;">
+                                <span class="fw-bold text-dark me-1">Members:</span>${memberNames}
+                            </div>
+                            <div class="text-end">
+                                <button onclick="openEditMealModal(this, '${meal._id}')" class="btn btn-sm btn-outline-primary me-2 px-3">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                                <button onclick="deleteMeal('${meal._id}')" class="btn btn-sm btn-outline-danger px-3">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+
+        // --- Load More Button (Meal) ---
+        if (sortedDates.length > visibleMealLimit) {
+            historyBody.innerHTML += `
+                <tr>
+                    <td colspan="5" class="text-center py-3 border-0 bg-white">
+                        <button onclick="loadMoreMeals()" class="btn btn-outline-primary btn-sm rounded-pill px-4 shadow-sm">
+                            <i class="bi bi-arrow-down-circle me-1"></i> Load More
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+function renderBazarTable() {
+    const tbody = document.getElementById('table-bazar');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (state.bazar.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No bazar entries found for this month.</td></tr>`;
+        return;
+    }
+
+    // ১. বাজারগুলোকে তারিখ অনুযায়ী গ্রুপ (Group) করা
+    const groupedBazar = {};
+    state.bazar.forEach(entry => {
+        const dateStr = new Date(entry.date).toISOString().split('T')[0];
+        if (!groupedBazar[dateStr]) {
+            groupedBazar[dateStr] = [];
+        }
+        groupedBazar[dateStr].push(entry);
+    });
+
+    // ২. তারিখগুলোকে নতুন থেকে পুরনো (Descending) সিরিয়ালে সাজানো
+    const sortedDates = Object.keys(groupedBazar).sort((a, b) => new Date(b) - new Date(a));
+
+    // ম্যাজিক: সব ডেটার বদলে শুধু লিমিট অনুযায়ী ডেটা নেওয়া হচ্ছে
+    const datesToShow = sortedDates.slice(0, visibleBazarLimit);
+
+    // ৩. টেবিলে রেন্ডার করা
+    datesToShow.forEach(date => {
+        const items = groupedBazar[date];
+
+        // --- নতুন: তারিখ এবং বারের নাম বের করা ---
+        const dateObj = new Date(date);
+        const niceDate = dateObj.toLocaleDateString('en-GB');
+        const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'long' }); // বারের নাম (যেমন: Saturday)
+
+        // ওই দিনের মোট খরচ
+        const dailyTotal = items.reduce((sum, current) => sum + current.amount, 0);
+
+        // তারিখ এবং বারের নাম একসাথে দেখানো
+        tbody.innerHTML += `
+            <tr class="table-light border-bottom border-primary">
+                <td colspan="3" class="fw-bold text-primary">
+                    <i class="bi bi-calendar-check me-2"></i>${niceDate} <span class="text-secondary small ms-1">(${dayName})</span>
+                </td>
+                <td class="text-end fw-bold text-dark">Daily Total: ৳${dailyTotal}</td>
+                <td></td>
+            </tr>
+        `;
+
+        // ওই তারিখের নিচে সব বাজারের আইটেমগুলো দেখানো
+        items.forEach(entry => {
+            const rawDate = new Date(entry.date).toISOString().split('T')[0];
+            const safeItem = entry.item ? entry.item.replace(/'/g, "\\'") : '';
+            const safeNote = entry.note ? entry.note.replace(/'/g, "\\'") : '';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-muted small ps-4">↳</td>
+                    <td class="fw-bold">${entry.item}</td>
+                    <td class="text-muted small">${entry.note || ''}</td>
+                    <td class="text-end fw-bold text-danger">৳${entry.amount}</td>
+                    <td class="text-end">
+                        <button onclick="openEditBazarModal(this, '${entry._id}', '${rawDate}', '${safeItem}', ${entry.amount}, '${safeNote}')" class="btn btn-sm btn-outline-primary me-1" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button onclick="deleteBazar('${entry._id}')" class="btn btn-sm btn-outline-danger" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+
+    // --- Load More Button (Bazar) ---
+    // যদি মোট ডেটা লিমিটের চেয়ে বেশি হয়, তবেই বাটন দেখাবে
+    if (sortedDates.length > visibleBazarLimit) {
+        tbody.innerHTML += `
+            <tr>
+                <td colspan="5" class="text-center py-3 border-0 bg-white">
+                    <button onclick="loadMoreBazar()" class="btn btn-outline-primary btn-sm rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-arrow-down-circle me-1"></i> Load More
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// নতুন renderManagerSelection ফাংশন:
+function renderManagerSelection() {
+    const select = document.getElementById('select-manager');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Choose Member...</option>';
+    state.members.filter(m => m.isActive).forEach(m => {
+        // যদি এই মাসের রিপোর্টে অলরেডি ম্যানেজার থাকে, তাহলে তাকে সিলেক্টেড দেখাবে
+        const isSelected = state.report.managerId === m._id ? 'selected' : '';
+        select.innerHTML += `<option value="${m._id}" ${isSelected}>${m.name} (${m.room})</option>`;
+    });
+
+    const managerNameEl = document.getElementById('current-manager-name');
+    if (state.report.managerId) {
+        const managerObj = state.members.find(m => m._id === state.report.managerId);
+        // "is getting free meals." লেখাটি এখান থেকে মুছে দেওয়া হয়েছে
+        managerNameEl.innerHTML = `Currently: <strong class="text-success">${managerObj ? managerObj.name : 'Unknown'}</strong>`;
+    } else {
+        managerNameEl.innerHTML = "No manager assigned. Everyone is paying.";
+    }
+}
+
+function renderDepositSelect() {
+    const selectElement = document.getElementById('deposit-member'); // আপনার HTML এর ID যদি ভিন্ন হয়, তবে এখানে বসাবেন
+    if (!selectElement) return;
+
+    // শুরুতে একটি ডিফল্ট অপশন বসানো
+    selectElement.innerHTML = '<option value="" disabled selected>Choose Member...</option>';
+
+    // ১. শুধু অ্যাক্টিভ মেম্বারদের ফিল্টার করা
+    // ২. তাদের রুম নাম্বার অনুযায়ী ছোট থেকে বড় সিরিয়ালে সাজানো (Sort)
+    const sortedMembers = state.members
+        .filter(m => m.isActive)
+        .sort((a, b) => String(a.room).localeCompare(String(b.room), undefined, { numeric: true }));
+
+    // ৩. সাজানো লিস্টটি ড্রপডাউনে যুক্ত করা
+    sortedMembers.forEach(m => {
+        selectElement.innerHTML += `<option value="${m._id}">${m.name} (Room: ${m.room})</option>`;
+    });
+}
+
+// আপডেটেড saveManager ফাংশন (With SweetAlert2 and Loading Animation)
+async function saveManager() {
+    try {
+        const memberId = document.getElementById('select-manager').value;
+        if (!memberId) {
+            Swal.fire('Oops!', 'ম্যানেজার সেট করার জন্য অন্তত একজনকে সিলেক্ট করুন।', 'warning');
+            return;
+        }
+
+        // ব্যবহারকারীকে বোঝানোর জন্য বাটনে Loading স্পিনার দেখানো
+        const btn = document.querySelector('button[onclick="saveManager()"]');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
+        btn.disabled = true;
+
+        const res = await fetch(`${API_BASE_URL}/manager`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ member: memberId, year: currentYear, month: currentMonth })
+        });
+
+        const json = await res.json();
+
+        // কাজ শেষ হলে বাটনের অবস্থা আগের মতো করা
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+
+        if (res.ok && json.success) {
+            await loadAllData();
+            // বিরক্তিকর অ্যালার্ট সরিয়ে স্ক্রিনের কোণায় সুন্দর টোস্ট (Toast) যুক্ত করা হলো
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'Manager Updated!' });
+        } else {
+            Swal.fire('Error!', 'ম্যানেজার সেট করতে সমস্যা হয়েছে: ' + (json.message || 'API Error!'), 'error');
+            console.error("Manager API Error Response:", json);
+        }
+    } catch (error) {
+        console.error("Manager Setup Error:", error);
+        Swal.fire('Error!', 'সার্ভার বা ইন্টারনেট কানেকশনে সমস্যা হয়েছে!', 'error');
+
+        const btn = document.querySelector('button[onclick="saveManager()"]');
+        if (btn) {
+            btn.innerHTML = 'Save Manager';
+            btn.disabled = false;
+        }
+    }
+}
+
+// Report টেবিল আপডেট করা (যাতে ব্যালেন্স দেখায়)
+function renderReportTable() {
+    document.getElementById('report-expense').innerText = state.report.totalExpense;
+    document.getElementById('report-meals').innerText = state.report.totalMeals;
+    document.getElementById('report-rate').innerText = state.report.mealRate.toFixed(2);
+
+    const tbody = document.getElementById('table-report');
+    tbody.innerHTML = '';
+    state.report.members.forEach(member => {
+        // ব্যালেন্স যদি মাইনাস হয় (বাকি থাকে) তাহলে লাল, আর প্লাস হলে (অ্যাডভান্স) সবুজ
+        const balanceColor = member.balance < 0 ? 'text-danger' : 'text-success';
+        const balanceText = member.balance < 0 ? `Due: ৳${Math.abs(member.balance).toFixed(2)}` : `Adv: ৳${member.balance.toFixed(2)}`;
+
+        // ম্যানেজার চেক
+        const managerBadge = member.isManager ? '<span class="badge bg-warning text-dark ms-1">Manager</span>' : '';
+        const payableText = member.isManager ? '<span class="text-success small fw-bold">Free (Manager)</span>' : `৳${member.payableAmount.toFixed(2)}`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <div class="fw-bold">${member.name} ${managerBadge}</div>
+                <small class="text-muted">Room: ${member.room}</small>
+            </td>
+            <td class="text-center"><span class="badge bg-primary rounded-pill">${member.totalMeals}</span></td>
+            <td class="text-end text-muted">${payableText}</td>
+            <td class="text-end fw-bold text-success">৳${member.depositedAmount.toFixed(2)}</td>
+            <td class="text-end fw-bold ${balanceColor}">${balanceText}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// --- BALANCE TABLE LOGIC ---
+function renderBalanceTable() {
+    const tbody = document.getElementById('table-balance');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    // যদি রিপোর্ট ডেটা না থাকে
+    if (!state.report || !state.report.members || state.report.members.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted py-4">No balance data available. Select a date range from the Dashboard first.</td></tr>`;
+        return;
+    }
+
+    state.report.members.forEach(member => {
+        // ব্যালেন্স যদি মাইনাস হয় (বাকি থাকে) তাহলে লাল, আর প্লাস হলে (অ্যাডভান্স) সবুজ
+        const balanceColor = member.balance < 0 ? 'text-danger' : 'text-success';
+        const balanceText = member.balance < 0 ? `Due: ৳${Math.abs(member.balance).toFixed(2)}` : `Adv: ৳${member.balance.toFixed(2)}`;
+        const managerBadge = member.isManager ? '<span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">Manager</span>' : '';
+
+        tbody.innerHTML += `
+            <tr>
+                <td class="ps-4">
+                    <div class="fw-bold text-dark">${member.name} ${managerBadge}</div>
+                    <small class="text-muted"><i class="bi bi-door-closed"></i> Room: ${member.room}</small>
+                </td>
+                <td class="text-end pe-4 fw-bold ${balanceColor}" style="font-size: 1.1rem;">
+                    ${balanceText}
+                </td>
+            </tr>
+        `;
+    });
+}
+
+// --- LOW BALANCE ALERT LOGIC ---
+function renderLowBalanceAlert() {
+    const tbody = document.getElementById('table-low-balance');
+    const thresholdInput = document.getElementById('low-balance-threshold');
+
+    if (!tbody || !thresholdInput) return;
+
+    if (!thresholdInput.hasAttribute('data-loaded')) {
+        const savedThreshold = localStorage.getItem('savedLowBalanceLimit');
+        if (savedThreshold !== null) {
+            thresholdInput.value = savedThreshold;
+        }
+        thresholdInput.setAttribute('data-loaded', 'true');
+    }
+
+    const threshold = Number(thresholdInput.value) || 0;
+    localStorage.setItem('savedLowBalanceLimit', threshold);
+
+    tbody.innerHTML = '';
+
+    if (!state.report || !state.report.members || state.report.members.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3">No data available.</td></tr>`;
+        return;
+    }
+
+    // লজিক আপডেট: ব্যালেন্স লিমিটের নিচে হবে, কিন্তু একদম '০' (0) হওয়া যাবে না!
+    const lowBalanceMembers = state.report.members.filter(m =>
+        m.balance <= threshold && m.balance !== 0 && !m.isManager
+    );
+
+    if (lowBalanceMembers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" class="text-center text-success py-4">
+                    <i class="bi bi-check-circle-fill fs-4 d-block mb-1"></i> 
+                    <span class="fw-bold">All good!</span> No member has a balance below ৳${threshold}.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    lowBalanceMembers.sort((a, b) => a.balance - b.balance);
+
+    lowBalanceMembers.forEach(member => {
+        const balanceColor = member.balance < 0 ? 'text-danger' : 'text-warning text-dark';
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold text-dark">${member.name}</td>
+                <td class="text-muted"><small>${member.room}</small></td>
+                <td class="text-end fw-bold pe-3 ${balanceColor}">৳${member.balance.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+}
+
+// ==========================================
+// --- LOAD MORE PAGINATION FUNCTIONS ---
+// ==========================================
+function loadMoreMeals() {
+    visibleMealLimit += 5; // প্রতি ক্লিকে আরও ৫ দিনের ডেটা বাড়বে
+    renderMealTables();
+}
+
+function loadMoreBazar() {
+    visibleBazarLimit += 5; // প্রতি ক্লিকে আরও ৫ দিনের ডেটা বাড়বে
+    renderBazarTable();
+}

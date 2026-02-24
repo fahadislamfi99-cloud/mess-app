@@ -1,0 +1,233 @@
+// --- DATA FETCHING (GET) WITH LOADING ANIMATION ---
+async function loadAllData() {
+    visibleMealLimit = 5;   // নতুন ডেটা লোড হলে লিমিট রিসেট হবে
+    visibleBazarLimit = 5;
+
+    // ১. সার্ভারে রিকোয়েস্ট পাঠানোর আগেই স্ক্রিনের সব জায়গায় লোডিং স্পিনার বসিয়ে দেওয়া
+    showLoadingSpinners();
+
+    try {
+        // Render-এর ফ্রি সার্ভার যাতে হ্যাং না হয়, তাই একসাথে ৫টি রিকোয়েস্ট না পাঠিয়ে একটি একটি করে পাঠানো হচ্ছে
+        await fetchMembers();
+        await fetchBazar();
+        await fetchMeals();
+        await fetchDeposits();
+        await fetchReport();
+    } catch (error) {
+        console.error("API Fetch Error:", error);
+    }
+
+    // ৩. ডেটা আসার পর লোডিং স্পিনার সরিয়ে আসল ডেটা রেন্ডার করা
+    renderAll();
+    applyAuthRules();
+}
+
+async function fetchMembers() {
+    const res = await fetch(`${API_BASE_URL}/members`);
+    const json = await res.json();
+    if (json.success) {
+        // Room Number অনুযায়ী ছোট থেকে বড় (Ascending) সাজানো হচ্ছে
+        state.members = json.data.sort((a, b) =>
+            a.room.localeCompare(b.room, undefined, { numeric: true })
+        );
+    }
+}
+
+async function fetchBazar() {
+    // গ্লোবাল ডেট ব্যবহার করা হচ্ছে
+    const res = await fetch(`${API_BASE_URL}/bazar?startDate=${globalStartDate}&endDate=${globalEndDate}`);
+    const json = await res.json();
+    if (json.success) state.bazar = json.data;
+}
+
+async function fetchMeals() {
+    // গ্লোবাল ডেট ব্যবহার করা হচ্ছে
+    const res = await fetch(`${API_BASE_URL}/meals?startDate=${globalStartDate}&endDate=${globalEndDate}`);
+    const json = await res.json();
+    if (json.success) state.meals = json.data;
+}
+
+async function fetchDeposits() {
+    // গ্লোবাল ডেট ব্যবহার করা হচ্ছে
+    const res = await fetch(`${API_BASE_URL}/deposits?startDate=${globalStartDate}&endDate=${globalEndDate}`);
+    const json = await res.json();
+    if (json.success) state.deposits = json.data;
+}
+
+// ফ্রন্টএন্ডের আপডেট করা fetchReport ফাংশন
+async function fetchReport() {
+    if (!globalStartDate || !globalEndDate) return;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/report?startDate=${globalStartDate}&endDate=${globalEndDate}`);
+        const json = await res.json();
+
+        if (json.success) {
+            json.data.members.sort((a, b) =>
+                String(a.room).localeCompare(String(b.room), undefined, { numeric: true })
+            );
+            state.report = json.data;
+            if (typeof renderReportTable === 'function') {
+                renderReportTable();
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching report:", error);
+    }
+}
+
+// Delete Meal
+function deleteMeal(id) {
+    Swal.fire({
+        title: 'Delete this meal?',
+        text: "You can re-add it from the form above.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/meals/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Meal entry has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
+
+// Delete Bazar
+function deleteBazar(id) {
+    Swal.fire({
+        title: 'Delete Bazar Entry?',
+        text: "This will remove the expense from the total calculation.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/bazar/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Bazar entry has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
+
+// Delete Deposit
+function deleteDeposit(id) {
+    Swal.fire({
+        title: 'Delete Deposit/Refund?',
+        text: "This will directly affect the member's balance.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/deposits/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Entry has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
+
+// Clear Today's Meals
+function clearTodaysMeals() {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now.getTime() - offset)).toISOString().split('T')[0];
+    const todaysMeals = state.meals.filter(meal => meal.date.startsWith(localISOTime));
+
+    if (todaysMeals.length === 0) {
+        Swal.fire('Oops!', 'আজকের তালিকায় কোনো মিল নেই!', 'info');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Clear All Meals?',
+        text: `আপনি কি নিশ্চিত যে আজকের সব মিল (${todaysMeals.length} টি এন্ট্রি) ডিলিট করতে চান?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, clear all!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                for (const meal of todaysMeals) {
+                    await fetch(`${API_BASE_URL}/meals/${meal._id}`, { method: 'DELETE' });
+                }
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('ডিলিট করতে সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Cleared!', text: 'আজকের সব মিল সফলভাবে ডিলিট করা হয়েছে।', icon: 'success', timer: 2000, showConfirmButton: false });
+        }
+    });
+}
+
+// Delete Member
+function deleteMember(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "This member will be deleted permanently!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete!',
+        showLoaderOnConfirm: true, 
+        preConfirm: async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/members/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Server Error');
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('সার্ভারে সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading() 
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'Member has been deleted.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+}
