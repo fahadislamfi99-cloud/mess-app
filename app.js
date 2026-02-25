@@ -15,8 +15,18 @@ if ('serviceWorker' in navigator) {
 document.addEventListener("DOMContentLoaded", () => {
     setupNavigation();
     setDefaultDates();
-    initGlobalDates(); // নতুন যোগ করা হলো
+    initGlobalDates();
     loadAllData();
+
+    // --- Tom Select for Smart Bazar Search ---
+    const tempItemSelect = document.getElementById('temp-item-name');
+    if (tempItemSelect) {
+        new TomSelect(tempItemSelect, {
+            create: true, 
+            sortField: [], // ম্যাজিক: এটি ফাঁকা রাখলে HTML এর অরিজিনাল সিরিয়াল ঠিক থাকবে!
+            placeholder: "-- বাজার সিলেক্ট করুন বা টাইপ করুন --"
+        });
+    }
 });
 
 
@@ -69,18 +79,44 @@ function updateDateRangeDisplay() {
 }
 
 
+// --- NAVIGATION LOGIC (With Smart Tab Memory) ---
 function setupNavigation() {
     const navButtons = document.querySelectorAll('.nav-btn');
+    
+    // ১. পেজ লোড হলে আগের সেভ করা ট্যাব বের করা (না পেলে ডিফল্ট 'dashboard' দেখাবে)
+    const savedTarget = localStorage.getItem('activeTab') || 'dashboard';
+
     navButtons.forEach(btn => {
+        
+        // ২. সেভ করা ট্যাব অনুযায়ী পেজ লোড করার সময় সঠিক সেকশনটি ওপেন রাখা
+        if(btn.getAttribute('data-target') === savedTarget) {
+            navButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('d-none'));
+            const targetEl = document.getElementById(savedTarget);
+            if(targetEl) targetEl.classList.remove('d-none');
+        }
+
+        // ৩. ক্লিক করার সাথে সাথে নতুন ট্যাবটি সেভ করে ফেলা
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const target = btn.getAttribute('data-target');
+            
+            // ম্যাজিক: ব্রাউজারে ক্লিক করা ট্যাবের নাম সেভ করে রাখা হচ্ছে
+            localStorage.setItem('activeTab', target);
+
             navButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            
             document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('d-none'));
             document.getElementById(target).classList.remove('d-none');
+            
+            // মোবাইলের মেনুবার ক্লিক করার পর অটোমেটিক বন্ধ করে দেওয়া
             const navbarCollapse = document.getElementById('navbarNav');
-            if (navbarCollapse.classList.contains('show')) new bootstrap.Collapse(navbarCollapse).hide();
+            if (navbarCollapse && navbarCollapse.classList.contains('show')) {
+                new bootstrap.Collapse(navbarCollapse).hide();
+            }
         });
     });
 }
@@ -248,54 +284,143 @@ document.getElementById('form-add-member').addEventListener('submit', async (e) 
 
 // Add Bazar
 // ==========================================
-// --- ADD BAZAR (Without Note & With Animation) ---
+// --- SMART BULK BAZAR LOGIC ---
 // ==========================================
-document.getElementById('form-add-bazar').addEventListener('submit', async (e) => {
+
+let pendingBazarItems = []; 
+let currentShopperId = ''; // ম্যাজিক: এখন আমরা নাম নয়, মেম্বারের ID সেভ রাখবো
+let currentShopperName = '';
+let currentBazarDate = '';
+
+// Step 1: Start Button Click
+document.getElementById('btn-start-bazar')?.addEventListener('click', () => {
+    const dateInput = document.getElementById('bazar-bulk-date').value;
+    const memberSelect = document.getElementById('bazar-bulk-member');
+    
+    if(!dateInput || !memberSelect.value) {
+        Swal.fire('Oops!', 'দয়া করে তারিখ এবং বাজারকারীর নাম সিলেক্ট করুন!', 'warning');
+        return;
+    }
+
+    currentBazarDate = dateInput;
+    currentShopperId = memberSelect.value; // ড্রপডাউন থেকে সরাসরি Object ID নেওয়া হলো
+    currentShopperName = memberSelect.options[memberSelect.selectedIndex].text.split(' (')[0]; 
+
+    document.getElementById('display-shopper-name').innerText = currentShopperName;
+    
+    document.getElementById('bazar-step-1').classList.add('d-none');
+    document.getElementById('bazar-step-2').classList.remove('d-none');
+});
+
+// Step 2: Add Item to Temporary List
+document.getElementById('form-add-temp-item')?.addEventListener('submit', (e) => {
     e.preventDefault();
+    const itemName = document.getElementById('temp-item-name').value;
+    const amount = Number(document.getElementById('temp-item-amount').value);
 
-    // ম্যাজিক ফিক্স: Note ছাড়াই শুধু Date, Item এবং Amount নেওয়া হচ্ছে
-    const dateVal = e.target.querySelector('input[type="date"]').value;
-    const itemVal = document.getElementById('bazar-item-name').value; // Tom Select এর ID
-    const amountVal = Number(e.target.querySelector('input[type="number"]').value);
+    const isDuplicate = pendingBazarItems.some(entry => entry.item === itemName);
+    if (isDuplicate) {
+        Swal.fire('Oops!', `"${itemName}" লিস্টে আগে থেকেই অ্যাড করা আছে!`, 'warning');
+        return; 
+    }
 
-    // বাটন সিলেক্ট করা এবং লোডিং অ্যানিমেশন দেওয়া
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
-    submitBtn.disabled = true;
+    pendingBazarItems.push({ item: itemName, amount: amount });
+    e.target.reset();
+    
+    const tomSelectEl = document.getElementById('temp-item-name');
+    if (tomSelectEl && tomSelectEl.tomselect) tomSelectEl.tomselect.clear();
+
+    renderPendingBazarTable();
+});
+
+// (টেবিল রেন্ডার, রিমুভ, ক্যানসেল করার ফাংশনগুলো আগের মতোই থাকবে)
+// টেবিল রেন্ডার করা
+function renderPendingBazarTable() {
+    const tbody = document.getElementById('temp-bazar-list');
+    const tfoot = document.getElementById('temp-bazar-footer');
+    const saveBtn = document.getElementById('btn-save-bulk-bazar');
+    
+    tbody.innerHTML = '';
+    let total = 0;
+
+    if(pendingBazarItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-muted small py-3">No items added yet.</td></tr>`;
+        tfoot.classList.add('d-none');
+        saveBtn.disabled = true;
+        return;
+    }
+
+    pendingBazarItems.forEach((entry, index) => {
+        total += entry.amount;
+        tbody.innerHTML += `
+            <tr>
+                <td class="text-start ps-3 fw-bold text-dark">${entry.item}</td>
+                <td class="fw-bold">৳${entry.amount}</td>
+                <td>
+                    <button onclick="removeTempItem(${index})" class="btn btn-sm btn-outline-danger py-0 px-2" title="Remove"><i class="bi bi-x-lg"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+
+    document.getElementById('temp-bazar-total').innerText = total;
+    tfoot.classList.remove('d-none');
+    saveBtn.disabled = false;
+}
+
+window.removeTempItem = function(index) {
+    pendingBazarItems.splice(index, 1);
+    renderPendingBazarTable();
+};
+
+window.editBazarInfo = function() {
+    document.getElementById('bazar-step-2').classList.add('d-none');
+    document.getElementById('bazar-step-1').classList.remove('d-none');
+};
+
+window.resetBulkBazar = function() {
+    pendingBazarItems = [];
+    renderPendingBazarTable();
+    document.getElementById('bazar-step-2').classList.add('d-none');
+    document.getElementById('bazar-step-1').classList.remove('d-none');
+};
+
+// Step 3: Save All to Database (প্রফেশনাল ওয়ে)
+document.getElementById('btn-save-bulk-bazar')?.addEventListener('click', async () => {
+    if(pendingBazarItems.length === 0) return;
+
+    const btn = document.getElementById('btn-save-bulk-bazar');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving to Server...';
+    btn.disabled = true;
 
     try {
-        // note ছাড়াই ডেটা ডাটাবেসে পাঠানো হচ্ছে
-        const res = await fetch(`${API_BASE_URL}/bazar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date: dateVal, item: itemVal, amount: amountVal })
-        });
-
-        if (res.ok) {
-            e.target.reset();
-
-            // Tom Select এর বক্সটি আগের অবস্থায় (ফাঁকা) ফিরিয়ে আনার ম্যাজিক
-            const tomSelectEl = document.getElementById('bazar-item-name');
-            if (tomSelectEl && tomSelectEl.tomselect) {
-                tomSelectEl.tomselect.clear();
-            }
-
-            setDefaultDates();
-            await loadAllData();
-
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
-            Toast.fire({ icon: 'success', title: 'Bazar Saved!' });
-        } else {
-            Swal.fire('Error!', 'বাজার সেভ করতে সমস্যা হয়েছে।', 'error');
+        for(const entry of pendingBazarItems) {
+            await fetch(`${API_BASE_URL}/bazar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    date: currentBazarDate, 
+                    item: entry.item, 
+                    amount: entry.amount,
+                    note: "", // ম্যাজিক: Note এখন একদম ফাঁকা থাকবে!
+                    shopper: currentShopperId // সরাসরি মেম্বারের ID পাঠানো হচ্ছে
+                })
+            });
         }
+
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        Toast.fire({ icon: 'success', title: 'Full Bazar List Saved!' });
+        
+        resetBulkBazar(); 
+        await loadAllData(); 
+
     } catch (error) {
-        console.error("Error saving bazar:", error);
-        Swal.fire('Error!', 'ইন্টারনেট কানেকশন বা সার্ভারে সমস্যা আছে!', 'error');
+        console.error("Bulk Save Error:", error);
+        Swal.fire('Error!', 'সার্ভারে সেভ করতে সমস্যা হয়েছে।', 'error');
     } finally {
-        // কাজ শেষ হলে বাটন আগের অবস্থায় ফিরিয়ে আনা
-        submitBtn.innerHTML = originalBtnText;
-        submitBtn.disabled = false;
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 });
 
@@ -756,8 +881,100 @@ function deleteMember(id) {
 }
 
 
+// ==========================================
+// --- EDIT OR ADD SHOPPER NAME FOR FULL DAY ---
+// ==========================================
+// ==========================================
+// --- EDIT OR ADD SHOPPER NAME FOR FULL DAY ---
+// ==========================================
+window.editShopperForDate = async function(dateStr, currentShopperId) {
+    const activeMembers = state.members
+        .filter(m => m.isActive)
+        .sort((a, b) => String(a.room).localeCompare(String(b.room), undefined, { numeric: true }));
+    
+    const inputOptions = {};
+    activeMembers.forEach(m => {
+        inputOptions[m._id] = `${m.name} (Room: ${m.room})`; // নাম নয়, ID সেভ হবে
+    });
+
+    const { value: selectedShopperId } = await Swal.fire({
+        title: currentShopperId ? 'Edit Shopper' : 'Add Shopper',
+        text: `বাজারের তারিখ: ${new Date(dateStr).toLocaleDateString('en-GB')}`,
+        icon: 'question',
+        input: 'select',
+        inputOptions: inputOptions,
+        inputValue: currentShopperId,
+        inputPlaceholder: '-- মেম্বার সিলেক্ট করুন --',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-check-circle"></i> Save Name',
+        inputValidator: (value) => {
+            if (!value) return 'দয়া করে একজন মেম্বার সিলেক্ট করুন!';
+        }
+    });
+
+    if (selectedShopperId && selectedShopperId !== currentShopperId) {
+        Swal.fire({ title: 'Saving...', html: 'পুরো দিনের ডেটা আপডেট হচ্ছে, দয়া করে অপেক্ষা করুন।', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        try {
+            const daysItems = state.bazar.filter(b => b.date.startsWith(dateStr));
+            
+            for (const item of daysItems) {
+                await fetch(`${API_BASE_URL}/bazar/${item._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        date: item.date, 
+                        item: item.item, 
+                        amount: item.amount, 
+                        note: item.note, // আগের রিয়েল নোট থাকলে সেটা অক্ষত থাকবে
+                        shopper: selectedShopperId // প্রফেশনাল মেম্বার ID বসবে
+                    })
+                });
+            }
+            
+            await loadAllData();
+            Swal.fire({ icon: 'success', title: 'Success!', text: 'বাজারকারীর নাম সফলভাবে আপডেট হয়েছে।', timer: 1500, showConfirmButton: false });
+        } catch (error) {
+            console.error("Shopper Update Error:", error);
+            Swal.fire('Error!', 'সার্ভারে আপডেট করতে সমস্যা হয়েছে।', 'error');
+        }
+    }
+};
 
 
+// ==========================================
+// --- SHOW SHOPPER DATES POPUP ---
+// ==========================================
+window.showShopperDates = function(name, datesJsonStr) {
+    const datesArray = JSON.parse(decodeURIComponent(datesJsonStr));
+    
+    // তারিখগুলোকে সুন্দর করে লিস্ট আকারে সাজানো
+    let listHTML = '<div class="list-group text-start mt-3 shadow-sm">';
+    datesArray.forEach((dateStr, index) => {
+        const dateObj = new Date(dateStr);
+        const niceDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'long' });
+        
+        listHTML += `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark"><span class="text-primary me-2">${index + 1}.</span>${niceDate}</span>
+                <span class="badge bg-light border text-secondary">${dayName}</span>
+            </div>
+        `;
+    });
+    listHTML += '</div>';
+
+    // SweetAlert2 দিয়ে প্রফেশনাল পপআপ দেখানো
+    Swal.fire({
+        title: `<i class="bi bi-calendar-check text-primary"></i> ${name}`,
+        html: `<div class="text-muted small mb-2">এই মাসে মোট <strong>${datesArray.length}</strong> দিন বাজার করেছেন:</div>` + listHTML,
+        confirmButtonColor: '#0d6efd',
+        confirmButtonText: 'Close',
+        customClass: { popup: 'rounded-4' }
+    });
+};
 
 
 

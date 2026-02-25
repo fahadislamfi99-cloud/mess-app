@@ -231,3 +231,41 @@ function deleteMember(id) {
         }
     });
 }
+
+// ==========================================
+// --- DELETE FULL DAY BAZAR LOGIC ---
+// ==========================================
+function deleteFullDayBazar(dateStr) {
+    // ওই নির্দিষ্ট তারিখের সব বাজারের আইটেমগুলো ফিল্টার করা
+    const daysItems = state.bazar.filter(b => b.date.startsWith(dateStr));
+
+    if (daysItems.length === 0) return;
+
+    Swal.fire({
+        title: 'Delete Entire Day?',
+        text: `আপনি কি নিশ্চিত যে এই তারিখের সব বাজার (${daysItems.length} টি আইটেম) একসাথে ডিলিট করতে চান?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete all!',
+        showLoaderOnConfirm: true,
+        preConfirm: async () => {
+            try {
+                // লুপ চালিয়ে ওই দিনের সব আইটেম ব্যাকএন্ড থেকে ডিলিট করা হচ্ছে
+                for (const item of daysItems) {
+                    await fetch(`${API_BASE_URL}/bazar/${item._id}`, { method: 'DELETE' });
+                }
+                await loadAllData();
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('ডিলিট করতে সমস্যা হয়েছে!');
+            }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleted!', text: 'ওই দিনের সব বাজার সফলভাবে ডিলিট করা হয়েছে।', icon: 'success', timer: 2000, showConfirmButton: false });
+        }
+    });
+}

@@ -64,7 +64,7 @@ function showLoadingSpinners() {
 function renderAll() {
     renderDashboard(); renderMembersTable(); renderMealChecklist(); renderMealTables();
     renderBazarTable(); renderDeposits(); renderDepositSelect(); renderReportTable();
-    renderManagerSelection(); renderBalanceTable(); renderLowBalanceAlert();
+    renderManagerSelection(); renderBalanceTable(); renderLowBalanceAlert(); populateBazarShopper();
 }
 
 function renderDashboard() {
@@ -501,67 +501,166 @@ function renderBazarTable() {
     tbody.innerHTML = '';
 
     if (state.bazar.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No bazar entries found for this month.</td></tr>`;
+        // ম্যাজিক: কলাম ৫ থেকে ৪ করা হয়েছে
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-5"><i class="bi bi-cart-x fs-1 text-light d-block mb-2"></i>No bazar entries found.</td></tr>`;
         return;
     }
 
-    // ১. বাজারগুলোকে তারিখ অনুযায়ী গ্রুপ (Group) করা
     const groupedBazar = {};
     state.bazar.forEach(entry => {
         const dateStr = new Date(entry.date).toISOString().split('T')[0];
-        if (!groupedBazar[dateStr]) {
-            groupedBazar[dateStr] = [];
-        }
+        if (!groupedBazar[dateStr]) groupedBazar[dateStr] = [];
         groupedBazar[dateStr].push(entry);
     });
 
-    // ২. তারিখগুলোকে নতুন থেকে পুরনো (Descending) সিরিয়ালে সাজানো
-    const sortedDates = Object.keys(groupedBazar).sort((a, b) => new Date(b) - new Date(a));
+    // ==========================================
+    // --- ম্যাজিক ১: লেটেস্ট ও পুরনো ডেটা রিডিং (Fix) ---
+    // ==========================================
+    const shopperDates = {}; 
+    Object.keys(groupedBazar).forEach(date => {
+        const items = groupedBazar[date];
+        let name = '';
+        
+        // ১. নতুন প্রফেশনাল সিস্টেম চেক
+        const newShopperItem = items.find(i => i.shopper && typeof i.shopper === 'object' && i.shopper.name);
+        if (newShopperItem) {
+            name = newShopperItem.shopper.name;
+        } 
+        // ২. পুরনো নোট থেকে নাম বের করা (Smart Regex Fix)
+        else {
+            const oldShopperItem = items.find(i => i.note && i.note.includes('বাজারকারী'));
+            if (oldShopperItem) {
+                // স্পেস বা কোলন যাই থাকুক, নিখুঁতভাবে নাম বের করে আনবে
+                name = oldShopperItem.note.replace(/বাজারকারী\s*:?/g, '').split(',')[0].trim();
+            }
+        }
 
-    // ম্যাজিক: সব ডেটার বদলে শুধু লিমিট অনুযায়ী ডেটা নেওয়া হচ্ছে
+        if (name) {
+            if(!shopperDates[name]) shopperDates[name] = [];
+            shopperDates[name].push(date);
+        }
+    });
+
+    let summaryCards = '';
+    for (const [name, datesArray] of Object.entries(shopperDates)) {
+        const count = datesArray.length;
+        const memberObj = state.members.find(m => m.name === name);
+        const roomNum = memberObj ? memberObj.room : 'N/A';
+        const datesJson = encodeURIComponent(JSON.stringify(datesArray));
+
+        summaryCards += `
+            <div onclick="showShopperDates('${name}', '${datesJson}')" title="Click to see dates" class="d-inline-flex align-items-center bg-white border rounded-pill shadow-sm me-2 mb-2 pe-3 ps-1 py-1" style="transition: all 0.3s ease; cursor: pointer;" onmouseover="this.classList.add('bg-light', 'border-primary')" onmouseout="this.classList.remove('bg-light', 'border-primary')">
+                <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center fw-bold shadow-sm" style="width: 32px; height: 32px; font-size: 0.95rem;">${count}</div>
+                <div class="ms-2 text-start">
+                    <div class="fw-bold text-dark lh-1 mt-1" style="font-size: 0.9rem;">${name}</div>
+                    <div class="text-muted small lh-1 mt-1" style="font-size: 0.7rem;"><i class="bi bi-door-closed"></i> Rm: ${roomNum}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    if (summaryCards) {
+        tbody.innerHTML += `
+            <tr>
+                <td colspan="4" class="bg-white border-0 pb-4 pt-2 px-0">
+                    <div class="p-3 p-md-4 rounded-4 shadow-sm" style="background: linear-gradient(145deg, #fdfbfb 0%, #ebedee 100%); border: 1px solid #e2e8f0;">
+                        <div class="text-secondary fw-bold mb-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                            <div><i class="bi bi-award-fill text-warning fs-5 me-2"></i> Monthly Shopper Report</div>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary fw-normal" style="font-size: 0.7rem; text-transform: none;">Click names for details</span>
+                        </div>
+                        <div class="d-flex flex-wrap">${summaryCards}</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    const sortedDates = Object.keys(groupedBazar).sort((a, b) => new Date(b) - new Date(a));
     const datesToShow = sortedDates.slice(0, visibleBazarLimit);
 
-    // ৩. টেবিলে রেন্ডার করা
     datesToShow.forEach(date => {
         const items = groupedBazar[date];
-
-        // --- নতুন: তারিখ এবং বারের নাম বের করা ---
         const dateObj = new Date(date);
         const niceDate = dateObj.toLocaleDateString('en-GB');
-        const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'long' }); // বারের নাম (যেমন: Saturday)
-
-        // ওই দিনের মোট খরচ
+        const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' }); 
         const dailyTotal = items.reduce((sum, current) => sum + current.amount, 0);
 
-        // তারিখ এবং বারের নাম একসাথে দেখানো
+        let shopperName = '';
+        let shopperRoom = '';
+        let shopperId = '';
+        
+        // ==========================================
+        // --- ম্যাজিক ২: হেডারের জন্য ডেটা বের করা ---
+        // ==========================================
+        const newShopperItem = items.find(i => i.shopper && typeof i.shopper === 'object' && i.shopper.name);
+        if (newShopperItem) {
+            shopperId = newShopperItem.shopper._id || '';
+            shopperName = newShopperItem.shopper.name;
+            shopperRoom = newShopperItem.shopper.room;
+        } 
+        else {
+            const oldShopperItem = items.find(i => i.note && i.note.includes('বাজারকারী'));
+            if (oldShopperItem) {
+                shopperName = oldShopperItem.note.replace(/বাজারকারী\s*:?/g, '').split(',')[0].trim();
+                const mObj = state.members.find(m => m.name === shopperName);
+                if (mObj) {
+                    shopperRoom = mObj.room;
+                    shopperId = mObj._id;
+                }
+            }
+        }
+
+        const shopperHTML = shopperName ? 
+            `<span onclick="editShopperForDate('${date}', '${shopperId}')" class="badge bg-white border border-primary border-opacity-25 text-primary rounded-pill px-2 py-1 shadow-sm" style="cursor: pointer; transition: 0.2s;" title="Edit Shopper Name" onmouseover="this.classList.add('bg-light')" onmouseout="this.classList.remove('bg-light')">
+                <i class="bi bi-pencil-square me-1"></i>${shopperName} <span class="text-muted fw-normal d-none d-sm-inline ms-1">(${shopperRoom})</span>
+            </span>` 
+            : 
+            `<span onclick="editShopperForDate('${date}', '')" class="badge bg-light border border-secondary border-opacity-50 text-secondary rounded-pill px-2 py-1 shadow-sm" style="cursor: pointer; transition: 0.2s;" title="Add Shopper Name" onmouseover="this.classList.remove('bg-light', 'text-secondary'); this.classList.add('bg-secondary', 'text-white');" onmouseout="this.classList.remove('bg-secondary', 'text-white'); this.classList.add('bg-light', 'text-secondary');">
+                <i class="bi bi-person-plus-fill me-1"></i>Add Shopper
+            </span>`;
+
         tbody.innerHTML += `
-            <tr class="table-light border-bottom border-primary">
-                <td colspan="3" class="fw-bold text-primary">
-                    <i class="bi bi-calendar-check me-2"></i>${niceDate} <span class="text-secondary small ms-1">(${dayName})</span>
+            <tr class="table-light border-bottom border-primary border-opacity-25">
+                <td colspan="4" class="p-2 p-md-3">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 gap-md-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-md-auto">
+                            <span class="fw-bold text-primary" style="font-size: 0.95rem;"><i class="bi bi-calendar-event me-1"></i>${niceDate} <span class="text-secondary small">(${dayName})</span></span>
+                            ${shopperHTML}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center w-100 w-md-auto bg-white px-3 py-1 rounded-pill border border-primary border-opacity-25 shadow-sm mt-1 mt-md-0">
+                            <span class="fw-bold text-dark me-3" style="font-size: 0.85rem;">Total: <span class="text-danger fs-6 ms-1">৳${dailyTotal}</span></span>
+                            <button onclick="deleteFullDayBazar('${date}')" class="btn btn-sm btn-outline-danger p-1 rounded-circle d-flex justify-content-center align-items-center" style="width: 26px; height: 26px;" title="Delete Entire Day">
+                                <i class="bi bi-trash-fill" style="font-size: 0.8rem;"></i>
+                            </button>
+                        </div>
+                    </div>
                 </td>
-                <td class="text-end fw-bold text-dark">Daily Total: ৳${dailyTotal}</td>
-                <td></td>
             </tr>
         `;
 
-        // ওই তারিখের নিচে সব বাজারের আইটেমগুলো দেখানো
         items.forEach(entry => {
             const rawDate = new Date(entry.date).toISOString().split('T')[0];
             const safeItem = entry.item ? entry.item.replace(/'/g, "\\'") : '';
-            const safeNote = entry.note ? entry.note.replace(/'/g, "\\'") : '';
 
+            // ==========================================
+            // --- ম্যাজিক ৩: Note এর অস্তিত্ব চিরতরে শেষ ---
+            // ==========================================
             tbody.innerHTML += `
                 <tr>
-                    <td class="text-muted small ps-4">↳</td>
-                    <td class="fw-bold">${entry.item}</td>
-                    <td class="text-muted small">${entry.note || ''}</td>
-                    <td class="text-end fw-bold text-danger">৳${entry.amount}</td>
-                    <td class="text-end">
-                        <button onclick="openEditBazarModal(this, '${entry._id}', '${rawDate}', '${safeItem}', ${entry.amount}, '${safeNote}')" class="btn btn-sm btn-outline-primary me-1" title="Edit">
-                            <i class="bi bi-pencil"></i>
+                    <td class="text-center text-muted small align-middle border-0 border-bottom border-light" style="width: 30px;">↳</td>
+                    
+                    <td class="text-start fw-bold align-middle border-0 border-bottom border-light text-dark text-wrap w-100">
+                        ${entry.item}
+                    </td>
+                    
+                    <td class="text-end fw-bold text-danger align-middle border-0 border-bottom border-light text-nowrap" style="width: 1%; padding-right: 15px; font-size: 1rem;">৳${entry.amount}</td>
+                    
+                    <td class="text-end align-middle border-0 border-bottom border-light text-nowrap" style="width: 1%;">
+                        <button onclick="openEditBazarModal(this, '${entry._id}', '${rawDate}', '${safeItem}', ${entry.amount}, '')" class="btn btn-sm btn-light text-primary border shadow-sm p-1 me-1" title="Edit">
+                            <i class="bi bi-pencil" style="font-size: 0.8rem;"></i>
                         </button>
-                        <button onclick="deleteBazar('${entry._id}')" class="btn btn-sm btn-outline-danger" title="Delete">
-                            <i class="bi bi-trash"></i>
+                        <button onclick="deleteBazar('${entry._id}')" class="btn btn-sm btn-light text-danger border shadow-sm p-1" title="Delete">
+                            <i class="bi bi-trash" style="font-size: 0.8rem;"></i>
                         </button>
                     </td>
                 </tr>
@@ -569,14 +668,12 @@ function renderBazarTable() {
         });
     });
 
-    // --- Load More Button (Bazar) ---
-    // যদি মোট ডেটা লিমিটের চেয়ে বেশি হয়, তবেই বাটন দেখাবে
     if (sortedDates.length > visibleBazarLimit) {
         tbody.innerHTML += `
             <tr>
-                <td colspan="5" class="text-center py-3 border-0 bg-white">
-                    <button onclick="loadMoreBazar()" class="btn btn-outline-primary btn-sm rounded-pill px-4 shadow-sm">
-                        <i class="bi bi-arrow-down-circle me-1"></i> Load More
+                <td colspan="4" class="text-center py-4 border-0 bg-white">
+                    <button onclick="loadMoreBazar()" class="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-bold">
+                        <i class="bi bi-arrow-down-circle me-1"></i> Load More Bazars
                     </button>
                 </td>
             </tr>
@@ -803,4 +900,28 @@ function loadMoreMeals() {
 function loadMoreBazar() {
     visibleBazarLimit += 5; // প্রতি ক্লিকে আরও ৫ দিনের ডেটা বাড়বে
     renderBazarTable();
+}
+
+
+// Add Bazar এর লিস্টে মেম্বারদের নাম আনা
+function populateBazarShopper() {
+    const select = document.getElementById('bazar-bulk-member');
+    if (!select) return;
+    select.innerHTML = '<option value="" disabled selected>-- মেম্বার সিলেক্ট করুন --</option>';
+    
+    // শুধু অ্যাক্টিভ মেম্বারদের রুম নাম্বার অনুযায়ী সাজিয়ে দেখানো
+    const activeMembers = state.members
+        .filter(m => m.isActive)
+        .sort((a, b) => String(a.room).localeCompare(String(b.room), undefined, { numeric: true }));
+
+    activeMembers.forEach(m => {
+        select.innerHTML += `<option value="${m._id}">${m.name} (${m.room})</option>`;
+    });
+
+    // ডিফল্টভাবে আজকের ডেট বসানো
+    const today = new Date();
+    const offset = today.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(today.getTime() - offset)).toISOString().split('T')[0];
+    const dateInput = document.getElementById('bazar-bulk-date');
+    if(dateInput) dateInput.value = localISOTime;
 }

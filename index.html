@@ -14,6 +14,10 @@
     <meta name="theme-color" content="#0d6efd">
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="stylesheet" href="styles.css">
+
+    <style>
+        
+    </style>
 </head>
 
 <body class="bg-light">
@@ -241,94 +245,101 @@
 
         <!-- Deposit Start -->
         <div id="deposits" class="view-section d-none">
-    <h3 class="mb-4"><i class="bi bi-wallet2 text-primary me-2"></i>Member Deposits</h3>
-    
-    <div class="row">
-        <div class="col-lg-4 col-md-5 mb-4">
-            
-            <div class="card shadow-sm border-0 border-start border-success border-4 mb-4">
-                <div class="card-header bg-white pb-0 border-0">
-                    <h5 class="mb-0 text-success"><i class="bi bi-cash-stack me-2"></i>Add Money</h5>
+            <h3 class="mb-4"><i class="bi bi-wallet2 text-primary me-2"></i>Member Deposits</h3>
+
+            <div class="row">
+                <div class="col-lg-4 col-md-5 mb-4">
+
+                    <div class="card shadow-sm border-0 border-start border-success border-4 mb-4">
+                        <div class="card-header bg-white pb-0 border-0">
+                            <h5 class="mb-0 text-success"><i class="bi bi-cash-stack me-2"></i>Add Money</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-add-deposit">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Date</label>
+                                    <input type="date" class="form-control bg-light" id="deposit-date" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Select Member</label>
+                                    <select class="form-select bg-light" id="deposit-member" required>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Amount (৳)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-success text-white border-success">৳</span>
+                                        <input type="number" class="form-control border-success" id="deposit-amount"
+                                            placeholder="যেমন: 2000" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100 fw-bold"><i
+                                        class="bi bi-plus-circle me-1"></i> Save Deposit</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 border-start border-danger border-4">
+                        <div class="card-header bg-white pb-0 border-0">
+                            <h5 class="mb-0 text-danger"><i class="bi bi-arrow-return-left me-2"></i>Refund Money</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-refund-money">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Date</label>
+                                    <input type="date" id="refund-date" class="form-control bg-light" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Select Member</label>
+                                    <select id="refund-member" class="form-select bg-light" required>
+                                        <option value="" disabled selected>-- মেম্বার সিলেক্ট করুন --</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Refund Amount (৳)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-danger text-white border-danger">৳</span>
+                                        <input type="number" id="refund-amount" class="form-control border-danger"
+                                            placeholder="যেমন: 500" required min="1">
+                                    </div>
+                                    <div class="form-text text-danger small mt-1"><i class="bi bi-info-circle"></i>
+                                        অ্যামাউন্ট অটোমেটিক মাইনাস হয়ে যাবে।</div>
+                                </div>
+                                <button type="submit" class="btn btn-outline-danger w-100 fw-bold">Confirm
+                                    Refund</button>
+                            </form>
+                        </div>
+                    </div>
+
                 </div>
-                <div class="card-body">
-                    <form id="form-add-deposit">
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">Date</label>
-                            <input type="date" class="form-control bg-light" id="deposit-date" required>
+
+                <div class="col-lg-8 col-md-7">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div
+                            class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 text-dark"><i class="bi bi-clock-history text-secondary me-2"></i>Deposit
+                                History</h5>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">Select Member</label>
-                            <select class="form-select bg-light" id="deposit-member" required>
-                                </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">Amount (৳)</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-success text-white border-success">৳</span>
-                                <input type="number" class="form-control border-success" id="deposit-amount" placeholder="যেমন: 2000" required>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 700px; overflow-y: auto;">
+                                <table class="table table-hover table-striped align-middle mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th class="ps-3">Date</th>
+                                            <th>Member Name</th>
+                                            <th class="text-end">Amount</th>
+                                            <th class="text-end pe-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-deposits">
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-success w-100 fw-bold"><i class="bi bi-plus-circle me-1"></i> Save Deposit</button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="card shadow-sm border-0 border-start border-danger border-4">
-                <div class="card-header bg-white pb-0 border-0">
-                    <h5 class="mb-0 text-danger"><i class="bi bi-arrow-return-left me-2"></i>Refund Money</h5>
-                </div>
-                <div class="card-body">
-                    <form id="form-refund-money">
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">Date</label>
-                            <input type="date" id="refund-date" class="form-control bg-light" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">Select Member</label>
-                            <select id="refund-member" class="form-select bg-light" required>
-                                <option value="" disabled selected>-- মেম্বার সিলেক্ট করুন --</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">Refund Amount (৳)</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-danger text-white border-danger">৳</span>
-                                <input type="number" id="refund-amount" class="form-control border-danger" placeholder="যেমন: 500" required min="1">
-                            </div>
-                            <div class="form-text text-danger small mt-1"><i class="bi bi-info-circle"></i> অ্যামাউন্ট অটোমেটিক মাইনাস হয়ে যাবে।</div>
-                        </div>
-                        <button type="submit" class="btn btn-outline-danger w-100 fw-bold">Confirm Refund</button>
-                    </form>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="col-lg-8 col-md-7">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-dark"><i class="bi bi-clock-history text-secondary me-2"></i>Deposit History</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 700px; overflow-y: auto;">
-                        <table class="table table-hover table-striped align-middle mb-0">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th class="ps-3">Date</th>
-                                    <th>Member Name</th>
-                                    <th class="text-end">Amount</th>
-                                    <th class="text-end pe-3">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-deposits">
-                                </tbody>
-                        </table>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
         <!-- Deposit END -->
 
@@ -410,123 +421,177 @@
         <div id="add-bazar" class="view-section d-none">
             <h3 class="mb-4">Bazar Expenses</h3>
             <div class="row">
-                <div class="col-md-4 mb-4">
-                    <div class="card shadow-sm border-0">
+                <div class="col-lg-4 col-12 mb-4">
+                    <div class="card shadow-sm border-0 mb-4">
                         <div class="card-header bg-white">
                             <h5 class="mb-0">Add Bazar</h5>
                         </div>
-                        <div class="card-body">
-                            <!--  -->
-                            <!-- <form id="form-add-bazar">
-                                <div class="mb-3">
-                                    <label class="form-label">Date</label>
-                                    <input type="date" class="form-control" required>
+                        <div class="card-body ">
+
+                            <!-- Add Bazar -->
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0"><i class="bi bi-cart-plus"></i> Add New Bazar</h5>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Item Name</label>
-                                    <input type="text" class="form-control" required>
+                                <div class="card-body">
+
+                                    <div id="bazar-step-1">
+                                        <div class="mb-3">
+                                            <label class="form-label small text-muted fw-bold">বাজারের তারিখ</label>
+                                            <input type="date" class="form-control" id="bazar-bulk-date" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small text-muted fw-bold">বাজারকারী মেম্বার</label>
+                                            <select class="form-select" id="bazar-bulk-member" required>
+                                                <option value="" disabled selected>Select Shopper...</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn btn-primary w-100 fw-bold py-2" id="btn-start-bazar">
+                                            Start Bazar Entry <i class="bi bi-arrow-right-circle ms-1"></i>
+                                        </button>
+                                    </div>
+
+                                    <div id="bazar-step-2"
+                                        class="d-none mt-2 pt-3 border-top border-primary border-opacity-25">
+                                        <div
+                                            class="d-flex justify-content-between align-items-center mb-3 bg-light p-2 rounded">
+                                            <span class="text-dark"><i class="bi bi-person-badge text-primary"></i>
+                                                <strong id="display-shopper-name"
+                                                    class="text-primary fs-6"></strong></span>
+                                            <button class="btn btn-sm btn-outline-primary px-3 rounded-pill" onclick="editBazarInfo()"><i class="bi bi-pencil"></i> Edit Info</button>
+                                        </div>
+
+                                        <form id="form-add-temp-item" class="mb-3">
+
+                                            <div class="mb-2">
+                                                <select id="temp-item-name"
+                                                    class="form-select bg-white fw-bold text-dark" required
+                                                    placeholder="-- বাজার সিলেক্ট করুন বা টাইপ করুন --">
+                                                    <option value="" disabled selected>-- বাজার সিলেক্ট করুন --</option>
+
+                                                    <optgroup label="শুকনা বাজার">
+                                                        <option value="চাল">চাল</option>
+                                                        <option value="আটা">আটা</option>
+                                                        <option value="ময়দা">ময়দা</option>
+                                                        <option value="ডাল">ডাল</option>
+                                                        <option value="ডাল মসলা">ডাল মসলা</option>
+                                                    </optgroup>
+
+                                                    <optgroup label="মাছ ও মাংস">
+                                                        <option value="গরুর মাংস">গরুর মাংস</option>
+                                                        <option value="খাসির মাংস">খাসির মাংস</option>
+                                                        <option value="মুরগির মাংস">মুরগির মাংস</option>
+                                                        <option value="মাছ (বড়)">মাছ (বড়)</option>
+                                                        <option value="মাছ (ছোট)">মাছ (ছোট)</option>
+                                                        <option value="ডিম">ডিম</option>
+                                                    </optgroup>
+
+                                                    <optgroup label="সবজি">
+                                                        <option value="আলু">আলু</option>
+                                                        <option value="বেগুন">বেগুন</option>
+                                                        <option value="কপি">কপি</option>
+                                                        <option value="ফুলকপি">ফুলকপি</option>
+                                                        <option value="পটল">পটল</option>
+                                                        <option value="করলা">করলা</option>
+                                                        <option value="মিষ্টি কুমড়া">মিষ্টি কুমড়া</option>
+                                                        <option value="লাউ">লাউ</option>
+                                                        <option value="শিম">শিম</option>
+                                                        <option value="ঢেঁড়স">ঢেঁড়স</option>
+                                                        <option value="পেঁপে">পেঁপে</option>
+                                                        <option value="কলা">কলা</option>
+                                                        <option value="মূলা">মূলা</option>
+                                                        <option value="পালংশাক">পালংশাক</option>
+                                                        <option value="বরবটি">বরবটি</option>
+                                                        <option value="কাঁকরোল">কাঁকরোল</option>
+                                                        <option value="সজিনা">সজিনা</option>
+                                                        <option value="ডাটা">ডাটা</option>
+                                                        <option value="লাল শাক">লাল শাক</option>
+                                                        <option value="পুঁই শাক">পুঁই শাক</option>
+                                                        <option value="অন্যান্য শাক">অন্যান্য শাক</option>
+                                                        <option value="টমেটো">টমেটো</option>
+                                                        <option value="শসা">শসা</option>
+                                                        <option value="লেবু">লেবু</option>
+                                                    </optgroup>
+
+                                                    <optgroup label="মসলা ও তেল">
+                                                        <option value="পেঁয়াজ">পেঁয়াজ</option>
+                                                        <option value="কাঁচামরিচ">কাঁচামরিচ</option>
+                                                        <option value="শুকনা মরিচ">শুকনা মরিচ</option>
+                                                        <option value="হলুদ">হলুদ</option>
+                                                        <option value="আদা">আদা</option>
+                                                        <option value="রসুন">রসুন</option>
+                                                        <option value="মরিচ (মসলা)">মরিচ (মসলা)</option>
+                                                        <option value="ধনিয়া">ধনিয়া</option>
+                                                        <option value="জিরা">জিরা</option>
+                                                        <option value="তেজপাতা">তেজপাতা</option>
+                                                        <option value="লবণ">লবণ</option>
+                                                        <option value="সয়াবিন তেল">সয়াবিন তেল</option>
+                                                    </optgroup>
+
+                                                    <optgroup label="অন্যান্য">
+                                                        <option value="লিক সাবান">লিক সাবান</option>
+                                                        <option value="ছোট বাচ্চাদের দুধ">ছোট বাচ্চাদের দুধ</option>
+                                                        <option value="অন্যান্য তরকারি">অন্যান্য তরকারি</option>
+                                                        <option value="অতিরিক্ত">অতিরিক্ত</option>
+                                                    </optgroup>
+                                                </select>
+                                            </div>
+
+                                            <div class="row g-2 align-items-center">
+                                                <div class="col-7">
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-white text-muted">৳</span>
+                                                        <input type="number" class="form-control bg-white fw-bold"
+                                                            id="temp-item-amount" placeholder="Amount" required min="1">
+                                                    </div>
+                                                </div>
+                                                <div class="col-5">
+                                                    <button type="submit" class="btn btn-dark w-100"><i
+                                                            class="bi bi-plus-lg"></i> Add</button>
+                                                </div>
+                                            </div>
+                                        </form>
+
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered text-center align-middle mb-2">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="text-start ps-3">Item</th>
+                                                        <th>Amount</th>
+                                                        <th><i class="bi bi-trash text-danger"></i></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="temp-bazar-list">
+                                                    <tr>
+                                                        <td colspan="3" class="text-muted small py-3">No items added
+                                                            yet.</td>
+                                                    </tr>
+                                                </tbody>
+                                                <tfoot class="table-light d-none" id="temp-bazar-footer">
+                                                    <tr>
+                                                        <td class="text-end fw-bold">Total Bill:</td>
+                                                        <td class="text-danger fw-bold fs-6">৳<span
+                                                                id="temp-bazar-total">0</span></td>
+                                                        <td></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+
+                                        <button class="btn btn-success w-100 fw-bold mt-2 shadow-sm py-2"
+                                            id="btn-save-bulk-bazar" disabled>
+                                            <i class="bi bi-cloud-arrow-up-fill me-1"></i> Save Complete Bazar
+                                        </button>
+                                    </div>
+
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Amount (৳)</label>
-                                    <input type="number" class="form-control" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Note</label>
-                                    <textarea class="form-control" rows="2"></textarea>
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100">Save Bazar</button>
-                            </form> -->
+                            </div>
+                            <!-- Add Bazar -->
 
-                            <form id="form-add-bazar">
-                                <div class="mb-3">
-                                    <label class="form-label">Date</label>
-                                    <input type="date" class="form-control" required>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Item Name</label>
-                                    <select id="bazar-item-name" class="form-select" required>
-                                        <option value="" disabled selected>-- বাজার সিলেক্ট করুন --</option>
-
-                                        <optgroup label="শুকনা বাজার">
-                                            <option value="চাল">চাল</option>
-                                            <option value="আটা">আটা</option>
-                                            <option value="ময়দা">ময়দা</option>
-                                            <option value="ডাল">ডাল</option>
-                                            <option value="ডাল মসলা">ডাল মসলা</option>
-                                        </optgroup>
-
-                                        <optgroup label="মাছ ও মাংস">
-                                            <option value="গরুর মাংস">গরুর মাংস</option>
-                                            <option value="খাসির মাংস">খাসির মাংস</option>
-                                            <option value="মুরগির মাংস">মুরগির মাংস</option>
-                                            <option value="মাছ (বড়)">মাছ (বড়)</option>
-                                            <option value="মাছ (ছোট)">মাছ (ছোট)</option>
-                                            <option value="ডিম">ডিম</option>
-                                        </optgroup>
-
-                                        <optgroup label="সবজি">
-                                            <option value="আলু">আলু</option>
-                                            <option value="বেগুন">বেগুন</option>
-                                            <option value="কপি">কপি</option>
-                                            <option value="ফুলকপি">ফুলকপি</option>
-                                            <option value="পটল">পটল</option>
-                                            <option value="করলা">করলা</option>
-                                            <option value="মিষ্টি কুমড়া">মিষ্টি কুমড়া</option>
-                                            <option value="লাউ">লাউ</option>
-                                            <option value="শিম">শিম</option>
-                                            <option value="ঢেঁড়স">ঢেঁড়স</option>
-                                            <option value="পেঁপে">পেঁপে</option>
-                                            <option value="কলা">কলা</option>
-                                            <option value="মূলা">মূলা</option>
-                                            <option value="পালংশাক">পালংশাক</option>
-                                            <option value="বরবটি">বরবটি</option>
-                                            <option value="কাঁকরোল">কাঁকরোল</option>
-                                            <option value="সজিনা">সজিনা</option>
-                                            <option value="ডাটা">ডাটা</option>
-                                            <option value="লাল শাক">লাল শাক</option>
-                                            <option value="পুঁই শাক">পুঁই শাক</option>
-                                            <option value="অন্যান্য শাক">অন্যান্য শাক</option>
-                                            <option value="টমেটো">টমেটো</option>
-                                            <option value="শসা">শসা</option>
-                                            <option value="লেবু">লেবু</option>
-                                        </optgroup>
-
-                                        <optgroup label="মসলা ও তেল">
-                                            <option value="পেঁয়াজ">পেঁয়াজ</option>
-                                            <option value="কাঁচামরিচ">কাঁচামরিচ</option>
-                                            <option value="শুকনা মরিচ">শুকনা মরিচ</option>
-                                            <option value="হলুদ">হলুদ</option>
-                                            <option value="আদা">আদা</option>
-                                            <option value="রসুন">রসুন</option>
-                                            <option value="মরিচ (মসলা)">মরিচ (মসলা)</option>
-                                            <option value="ধনিয়া">ধনিয়া</option>
-                                            <option value="জিরা">জিরা</option>
-                                            <option value="তেজপাতা">তেজপাতা</option>
-                                            <option value="লবণ">লবণ</option>
-                                            <option value="সয়াবিন তেল">সয়াবিন তেল</option>
-                                        </optgroup>
-
-                                        <optgroup label="অন্যান্য">
-                                            <option value="লিক সাবান">লিক সাবান</option>
-                                            <option value="ছোট বাচ্চাদের দুধ">ছোট বাচ্চাদের দুধ</option>
-                                            <option value="অন্যান্য তরকারি">অন্যান্য তরকারি</option>
-                                            <option value="অতিরিক্ত">অতিরিক্ত</option>
-                                        </optgroup>
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Amount (৳)</label>
-                                    <input type="number" class="form-control" required>
-                                </div>
-                                
-                                <button type="submit" class="btn btn-primary w-100">Save Bazar</button>
-                            </form>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-8">
+                <div class="col-lg-8 col-12">
                     <div class="card shadow-sm border-0">
                         <div class="card-body">
                             <div class="table-responsive">
@@ -535,10 +600,8 @@
                                         <tr>
                                             <th>Date</th>
                                             <th>Item</th>
-                                            <th>Note</th>
                                             <th class="text-end">Amount</th>
                                             <th class="text-end">Action</th>
-                                        </tr>
                                         </tr>
                                     </thead>
                                     <tbody id="table-bazar">
@@ -786,9 +849,9 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="state.js"></script>
-<script src="auth.js"></script>
-<script src="api.js"></script>
-<script src="ui.js"></script>
+    <script src="auth.js"></script>
+    <script src="api.js"></script>
+    <script src="ui.js"></script>
     <script src="app.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
