@@ -3,22 +3,24 @@ async function loadAllData() {
     visibleMealLimit = 5;   // নতুন ডেটা লোড হলে লিমিট রিসেট হবে
     visibleBazarLimit = 5;
 
-    // ১. সার্ভারে রিকোয়েস্ট পাঠানোর আগেই স্ক্রিনের সব জায়গায় লোডিং স্পিনার বসিয়ে দেওয়া
+    // ১. সার্ভারে রিকোয়েস্ট পাঠানোর আগেই স্ক্রিনের সব জায়গায় লোডিং স্পিনার বসিয়ে দেওয়া
     showLoadingSpinners();
 
     try {
-        // Render-এর ফ্রি সার্ভার যাতে হ্যাং না হয়, তাই একসাথে ৫টি রিকোয়েস্ট না পাঠিয়ে একটি একটি করে পাঠানো হচ্ছে
+        // ১. ম্যাজিক: সবার আগে ডাটাবেস থেকে সেটিংস এবং আসল তারিখ নিয়ে আসা! (এই লাইনটি নতুন)
+        await fetchSettings(); 
+        
+        // ২. Render-এর ফ্রি সার্ভার যাতে হ্যাং না হয়, তাই একসাথে ৫টি রিকোয়েস্ট না পাঠিয়ে একটি একটি করে পাঠানো হচ্ছে
         await fetchMembers();
         await fetchBazar();
         await fetchMeals();
         await fetchDeposits();
-        await fetchSettings();
         await fetchReport();
     } catch (error) {
         console.error("API Fetch Error:", error);
     }
 
-    // ৩. ডেটা আসার পর লোডিং স্পিনার সরিয়ে আসল ডেটা রেন্ডার করা
+    // ৩. ডেটা আসার পর লোডিং স্পিনার সরিয়ে আসল ডেটা রেন্ডার করা
     renderAll();
     applyAuthRules();
 }
