@@ -61,6 +61,21 @@ async function fetchSettings() {
         const json = await res.json();
         if (json.success && json.data) {
             state.settings = json.data;
+            
+            // ম্যাজিক: ডাটাবেসে যদি ডেট সেভ করা থাকে, তবে বর্তমান মাসের বদলে সেটাকে বসিয়ে দেওয়া হবে!
+            if (state.settings.periodStart && state.settings.periodEnd) {
+                globalStartDate = state.settings.periodStart;
+                globalEndDate = state.settings.periodEnd;
+                
+                // Settings পেজের ইনপুট বক্সেও ডেটগুলো বসিয়ে দেওয়া
+                const startInput = document.getElementById('global-start-date');
+                const endInput = document.getElementById('global-end-date');
+                if(startInput) startInput.value = globalStartDate;
+                if(endInput) endInput.value = globalEndDate;
+                
+                // UI আপডেট করা
+                if(typeof updateDateRangeDisplay === 'function') updateDateRangeDisplay();
+            }
         }
     } catch (error) { console.error("Error fetching settings:", error); }
 }

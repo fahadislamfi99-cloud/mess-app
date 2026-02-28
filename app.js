@@ -93,13 +93,54 @@ function updateDateRangeDisplay() {
     }
 }
 
-// ফিল্টার অ্যাপ্লাই করে ড্যাশবোর্ডে ফিরে যাওয়ার ফাংশন
-window.applyGlobalFilterAndGoHome = function() {
-    applyGlobalFilter(); // ডেট সেভ করে ডেটা লোড করবে
-    
-    // সাথে সাথে অটোমেটিক ড্যাশবোর্ডে চলে যাবে
-    const dashboardBtn = document.querySelector('.nav-btn[data-target="dashboard"]');
-    if(dashboardBtn) dashboardBtn.click();
+// ফিল্টার অ্যাপ্লাই করে ডাটাবেসে সেভ করা এবং ড্যাশবোর্ডে ফিরে যাওয়ার ফাংশন
+window.applyGlobalFilterAndGoHome = async function() {
+    globalStartDate = document.getElementById('global-start-date').value;
+    globalEndDate = document.getElementById('global-end-date').value;
+
+    if (!globalStartDate || !globalEndDate) {
+        alert("দয়া করে From এবং To তারিখ ঠিকমতো সিলেক্ট করুন।");
+        return;
+    }
+
+    // বাটনে লোডিং অ্যানিমেশন দেখানো
+    const btn = document.querySelector('button[onclick="applyGlobalFilterAndGoHome()"]');
+    const origText = btn.innerHTML;
+    if(btn) {
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+        btn.disabled = true;
+    }
+
+    try {
+        // ম্যাজিক: সিলেক্ট করা তারিখ ডাটাবেসের গ্লোবাল সেটিংসে সেভ করে দেওয়া হচ্ছে!
+        await fetch(`${API_BASE_URL}/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                periodStart: globalStartDate,
+                periodEnd: globalEndDate
+            })
+        });
+
+        updateDateRangeDisplay(); 
+        await loadAllData(); 
+        
+        // সাকসেস মেসেজ দেখানো এবং ড্যাশবোর্ডে চলে যাওয়া
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        Toast.fire({ icon: 'success', title: 'Global Period Saved!' });
+
+        const dashboardBtn = document.querySelector('.nav-btn[data-target="dashboard"]');
+        if(dashboardBtn) dashboardBtn.click();
+
+    } catch (error) {
+        console.error("Error saving global dates:", error);
+        Swal.fire('Error!', 'তারিখ সেভ করতে সমস্যা হয়েছে।', 'error');
+    } finally {
+        if(btn) {
+            btn.innerHTML = origText;
+            btn.disabled = false;
+        }
+    }
 }
 
 
