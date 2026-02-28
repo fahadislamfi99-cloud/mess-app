@@ -6,7 +6,8 @@ const state = {
     bazar: [],
     meals: [],
     deposits: [], // এই লাইনটি মিসিং ছিল
-    report: { totalExpense: 0, totalMeals: 0, mealRate: 0, members: [] }
+    report: { totalExpense: 0, totalMeals: 0, mealRate: 0, members: [] },
+    settings: { calcMode: 'average' }
 };
 
 let activeEditBtn = null; // কোন পেন আইকনে ক্লিক হয়েছে তা মনে রাখার জন্য

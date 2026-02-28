@@ -63,7 +63,7 @@ function applyGlobalFilter() {
     loadAllData(); // ডেটা রিলোড করবে
 }
 
-// UI তে সুন্দর করে তারিখ দেখানোর ফাংশন (নতুন)
+// UI তে সুন্দর করে তারিখ এবং সিস্টেম দেখানোর ফাংশন
 function updateDateRangeDisplay() {
     const displaySpan = document.getElementById('display-date-range');
     if (displaySpan && globalStartDate && globalEndDate) {
@@ -76,6 +76,30 @@ function updateDateRangeDisplay() {
 
         displaySpan.innerText = `(${startStr} - ${endStr})`;
     }
+
+    // ম্যাজিক: ক্যালকুলেশন মোড (Average/Fixed) ব্যাজে আপডেট করা
+    const modeTextEl = document.getElementById('calc-mode-text');
+    const calcModeBadge = document.getElementById('display-calc-mode');
+    
+    if (modeTextEl && calcModeBadge) {
+        const currentMode = localStorage.getItem('calcMode') || 'average';
+        if (currentMode === 'fixed') {
+            modeTextEl.innerText = 'Fixed Rate';
+            calcModeBadge.className = 'badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-50';
+        } else {
+            modeTextEl.innerText = 'Average';
+            calcModeBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success border-opacity-25';
+        }
+    }
+}
+
+// ফিল্টার অ্যাপ্লাই করে ড্যাশবোর্ডে ফিরে যাওয়ার ফাংশন
+window.applyGlobalFilterAndGoHome = function() {
+    applyGlobalFilter(); // ডেট সেভ করে ডেটা লোড করবে
+    
+    // সাথে সাথে অটোমেটিক ড্যাশবোর্ডে চলে যাবে
+    const dashboardBtn = document.querySelector('.nav-btn[data-target="dashboard"]');
+    if(dashboardBtn) dashboardBtn.click();
 }
 
 
@@ -143,11 +167,12 @@ function setDefaultDates() {
 // --- SUBMIT ACTIONS (POST/PUT/DELETE) ---
 
 // 1. Edit Member Modal
-function openEditMemberModal(btn, id, name, room) {
-    activeEditBtn = btn; // ম্যাজিক: ক্লিক করা বাটনটি সেভ করে রাখলাম
+function openEditMemberModal(btn, id, name, room, phone) {
+    activeEditBtn = btn;
     document.getElementById('edit-member-id').value = id;
     document.getElementById('edit-member-name').value = name;
     document.getElementById('edit-member-room').value = room;
+    document.getElementById('edit-member-phone').value = (phone && phone !== 'undefined') ? phone : ''; // নতুন লাইন
     new bootstrap.Modal(document.getElementById('editMemberModal')).show();
 }
 
@@ -158,6 +183,7 @@ document.getElementById('form-edit-member').addEventListener('submit', async (e)
     const id = document.getElementById('edit-member-id').value;
     const name = document.getElementById('edit-member-name').value;
     const room = document.getElementById('edit-member-room').value;
+    const phone = document.getElementById('edit-member-phone').value; // নতুন লাইন
 
     // ১. সাথে সাথে বক্সটি বন্ধ করে দেওয়া
     bootstrap.Modal.getInstance(document.getElementById('editMemberModal')).hide();
@@ -172,7 +198,7 @@ document.getElementById('form-edit-member').addEventListener('submit', async (e)
         const res = await fetch(`${API_BASE_URL}/members/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, room })
+            body: JSON.stringify({ name, room, phone })
         });
 
         if (res.ok) {
@@ -259,7 +285,11 @@ document.getElementById('form-add-member').addEventListener('submit', async (e) 
         const res = await fetch(`${API_BASE_URL}/members`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: e.target[0].value, room: e.target[1].value })
+            body: JSON.stringify({ 
+                name: e.target[0].value, 
+                room: e.target[1].value, 
+                phone: document.getElementById('add-member-phone').value // নতুন লাইন
+            })
         });
 
         if (res.ok) {
@@ -977,5 +1007,115 @@ window.showShopperDates = function(name, datesJsonStr) {
 };
 
 
+// ==========================================
+// --- MEAL SETTINGS LOGIC (DATABASE SYNC) ---
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+    // Settings সেভ করা (সরাসরি ডাটাবেসে)
+    const settingsForm = document.getElementById('form-meal-settings');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // বাটন লোডিং
+            const btn = settingsForm.querySelector('button[type="submit"]');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+            btn.disabled = true;
+
+            const newSettings = {
+                calcMode: document.getElementById('setting-calc-mode').value,
+                rateBreakfast: document.getElementById('rate-breakfast').value,
+                rateLunch: document.getElementById('rate-lunch').value,
+                rateDinner: document.getElementById('rate-dinner').value,
+                rateSehri: document.getElementById('rate-sehri').value,
+                rateIftar: document.getElementById('rate-iftar').value
+            };
+
+            try {
+                // ডাটাবেসে সেভ করার রিকোয়েস্ট
+                const res = await fetch(`${API_BASE_URL}/settings`, {
+                    method: 'POST', // অথবা PUT (আপনার রাউট অনুযায়ী)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newSettings)
+                });
+
+                if (res.ok) {
+                    Swal.fire({ icon: 'success', title: 'Global Settings Saved!', text: 'হিসাবের নতুন নিয়ম সব ডিভাইসের জন্য কার্যকর হয়েছে।', timer: 2000, showConfirmButton: false });
+                    await loadAllData(); 
+                } else {
+                    Swal.fire('Error!', 'সেটিংস সেভ করতে সমস্যা হয়েছে।', 'error');
+                }
+            } catch (error) {
+                Swal.fire('Error!', 'সার্ভারে কানেক্ট করা যাচ্ছে না।', 'error');
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
+            }
+        });
+    }
+});
 
 
+// Change Period বাটনে ক্লিক করলে Settings আসা-যাওয়ার (Toggle) বুলেটপ্রুফ লজিক
+window.toggleSettingsView = function() {
+    const settingsSection = document.getElementById('settings');
+    const dashboardSection = document.getElementById('dashboard');
+
+    if (!settingsSection || !dashboardSection) {
+        console.error("Settings or Dashboard section not found in HTML!");
+        return;
+    }
+
+    // যদি Settings হাইড করা থাকে (অর্থাৎ বন্ধ থাকে)
+    if (settingsSection.classList.contains('d-none')) {
+        // স্ক্রিনের সব সেকশন হাইড করে দাও
+        document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('d-none'));
+        // শুধু Settings টা ওপেন করো
+        settingsSection.classList.remove('d-none');
+        
+        // (ঐচ্ছিক) মেনুবারে Settings এর রঙ অ্যাক্টিভ করা
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        const settingsBtn = document.querySelector('.nav-btn[data-target="settings"]');
+        if (settingsBtn) settingsBtn.classList.add('active');
+        
+    } else {
+        // যদি Settings আগে থেকেই ওপেন থাকে, তাহলে সব হাইড করে ড্যাশবোর্ডে ফিরে যাও
+        document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('d-none'));
+        dashboardSection.classList.remove('d-none');
+        
+        // (ঐচ্ছিক) মেনুবারে Dashboard এর রঙ অ্যাক্টিভ করা
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        const dashboardBtn = document.querySelector('.nav-btn[data-target="dashboard"]');
+        if (dashboardBtn) dashboardBtn.classList.add('active');
+    }
+};
+
+
+// ==========================================
+// --- WHATSAPP AUTO NOTIFICATION ---
+// ==========================================
+window.sendWhatsAppMsg = function(phone, name, balance) {
+    let formattedPhone = phone.trim();
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = '88' + formattedPhone;
+    } else if (!formattedPhone.startsWith('88')) {
+        formattedPhone = '880' + formattedPhone; 
+    }
+    
+    let message = '';
+    const exactAmount = Math.abs(balance).toFixed(2);
+
+    // ম্যাজিক: ব্যালেন্স মাইনাস নাকি প্লাস, তার ওপর ভিত্তি করে আলাদা মেসেজ!
+    if (balance < 0) {
+        // বকেয়া (Due) থাকলে এই মেসেজ যাবে
+        message = `আসসালামু আলাইকুম ${name},\nমেস অ্যাকাউন্টে আপনার ৳${exactAmount} টাকা বকেয়া (Due) হয়েছে। দয়া করে দ্রুত টাকা জমা দিন।\n- মেস ম্যানেজার`;
+    } else {
+        // ব্যালেন্স প্লাস কিন্তু কম (Low Balance) থাকলে এই মেসেজ যাবে
+        message = `আসসালামু আলাইকুম ${name},\nমেস অ্যাকাউন্টে আপনার ব্যালেন্স খুবই কম (মাত্র ৳${exactAmount} বাকি আছে)। মিল চালু রাখতে দয়া করে দ্রুত টাকা জমা দিন।\n- মেস ম্যানেজার`;
+    }
+    
+    // হোয়াটসঅ্যাপ ওপেন করা
+    const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+}

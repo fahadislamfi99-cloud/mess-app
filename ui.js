@@ -1,3 +1,22 @@
+// --- RESPONSIVE TABLE CSS FIX ---
+if (!document.getElementById('responsive-table-fixes')) {
+    const style = document.createElement('style');
+    style.id = 'responsive-table-fixes';
+    style.innerHTML = `
+        @media (max-width: 767px) {
+            table:has(#table-bazar) thead,
+            table:has(#table-deposits) thead,
+            table:has(#table-report) thead,
+            table:has(#table-meal-history) thead,
+            table:has(#table-members) thead,
+            table:has(#table-balance) thead {
+                display: none !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 // স্ক্রিনের সব জায়গায় প্রিমিয়াম লোডিং অ্যানিমেশন দেখানোর ফাংশন
 function showLoadingSpinners() {
     // ১. ড্যাশবোর্ডের জন্য আসল Facebook/Netflix স্টাইলের Shimmer CSS অ্যাড করা
@@ -65,6 +84,7 @@ function renderAll() {
     renderDashboard(); renderMembersTable(); renderMealChecklist(); renderMealTables();
     renderBazarTable(); renderDeposits(); renderDepositSelect(); renderReportTable();
     renderManagerSelection(); renderBalanceTable(); renderLowBalanceAlert(); populateBazarShopper();
+    populateSettingsForm();
 }
 
 function renderDashboard() {
@@ -107,19 +127,37 @@ function renderDashboard() {
     }
 }
 
-// মেম্বার লিস্ট রেন্ডার ও Edit বাটন যোগ করা
 function renderMembersTable() {
     const tbody = document.getElementById('table-members');
+    if (!tbody) return;
     tbody.innerHTML = '';
+
+    if (state.members.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No members found. Add a new member.</td></tr>`;
+        return;
+    }
+
     state.members.forEach(member => {
         const tr = document.createElement('tr');
+        
+        // ম্যাজিক: নম্বর থাকলে সুন্দর হোয়াটসঅ্যাপ আইকন দেখাবে, না থাকলে "No Number" দেখাবে
+        const phoneDisplay = member.phone 
+            ? `<div class="text-muted small mt-1"><i class="bi bi-whatsapp text-success me-1"></i>${member.phone}</div>` 
+            : `<div class="text-muted small mt-1 opacity-50"><i class="bi bi-telephone-x me-1"></i>No Number</div>`;
+
         tr.innerHTML = `
-            <td><div class="fw-bold">${member.name}</div></td>
-            <td>${member.room}</td>
-            <td><span class="badge ${member.isActive ? 'bg-success' : 'bg-secondary'}">${member.isActive ? 'Active' : 'Inactive'}</span></td>
-            <td class="text-end">
-                <button onclick="openEditMemberModal(this, '${member._id}', '${member.name}', '${member.room}')" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></button>
-                <button onclick="deleteMember('${member._id}')" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            <td class="align-middle">
+                <div class="fw-bold text-dark">${member.name}</div>
+                ${phoneDisplay} </td>
+            <td class="align-middle text-muted">${member.room}</td>
+            <td class="align-middle">
+                <span class="badge ${member.isActive ? 'bg-success' : 'bg-danger'}">
+                    ${member.isActive ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td class="align-middle text-end text-nowrap">
+                <button onclick="openEditMemberModal(this, '${member._id}', '${member.name}', '${member.room}', '${member.phone || ''}')" class="btn btn-sm btn-outline-primary me-1" title="Edit"><i class="bi bi-pencil"></i></button>
+                <button onclick="deleteMember('${member._id}')" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -132,81 +170,61 @@ function renderDeposits() {
     tbody.innerHTML = '';
 
     if (state.deposits.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No deposits found for this month.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-5"><i class="bi bi-clock-history fs-1 text-light d-block mb-2"></i>No deposit history found.</td></tr>`;
         return;
     }
 
-    // ১. ডেপোজিটগুলোকে মেম্বার অনুযায়ী গ্রুপ (Group) করা
-    const groupedDeposits = {};
-    state.deposits.forEach(entry => {
+    // ১. সব ডিপোজিটকে লেটেস্ট থেকে পুরনো (Chronological) সিরিয়ালে সাজানো
+    const sortedDeposits = [...state.deposits].sort((a, b) => {
+        const dateDiff = new Date(b.date) - new Date(a.date);
+        if (dateDiff !== 0) return dateDiff;
+        return String(b._id).localeCompare(String(a._id));
+    });
+
+    sortedDeposits.forEach(entry => {
+        const dateObj = new Date(entry.date);
+        const niceDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
+
         const memberId = entry.member._id || entry.member;
-        if (!groupedDeposits[memberId]) {
-            groupedDeposits[memberId] = [];
-        }
-        groupedDeposits[memberId].push(entry);
-    });
-
-    // ২. রুম নাম্বার অনুযায়ী লিস্টটিকে সাজানো (Sorting)
-    const sortedMemberIds = Object.keys(groupedDeposits).sort((idA, idB) => {
-        const memberA = state.members.find(m => m._id === idA);
-        const memberB = state.members.find(m => m._id === idB);
-        const roomA = memberA ? String(memberA.room) : '';
-        const roomB = memberB ? String(memberB.room) : '';
-        return roomA.localeCompare(roomB, undefined, { numeric: true });
-    });
-
-    // ৩. সাজানো সিরিয়াল অনুযায়ী টেবিলে রেন্ডার করা
-    sortedMemberIds.forEach(memberId => {
-        const items = groupedDeposits[memberId];
-
         const memberObj = state.members.find(m => m._id === memberId);
-        const memberName = memberObj ? memberObj.name : 'Unknown Member';
+        const memberName = memberObj ? memberObj.name : 'Unknown';
         const roomNum = memberObj ? memberObj.room : 'N/A';
 
-        const memberTotal = items.reduce((sum, current) => sum + current.amount, 0);
+        const isRefund = entry.amount < 0;
+        
+        // ২. প্রফেশনাল ব্যাজ (Badge) ডিজাইন
+        const typeBadge = isRefund 
+            ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 mt-1"><i class="bi bi-arrow-return-left me-1"></i>Refund</span>` 
+            : `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 mt-1"><i class="bi bi-cash me-1"></i>Cash In</span>`;
+        
+        const amountColor = isRefund ? 'text-danger' : 'text-success';
+        const displayAmount = isRefund ? `- ৳${Math.abs(entry.amount)}` : `+ ৳${entry.amount}`;
 
-        // মেম্বারের জন্য একটি হাইলাইটেড সারি (Header Row)
+        // ৩. পারফেক্ট এলাইনমেন্ট সহ টেবিল রেন্ডার
         tbody.innerHTML += `
-            <tr class="table-light border-bottom border-success">
-                <td colspan="2" class="fw-bold text-success">
-                    <i class="bi bi-person-check me-2"></i>${memberName} <span class="text-secondary small ms-1">(Room: ${roomNum})</span>
+            <tr class="align-middle border-bottom border-light">
+                <td class="ps-3 ps-md-4 text-nowrap" style="width: 1%;">
+                    <div class="fw-bold text-dark" style="font-size: 0.95rem;">${niceDate}</div>
+                    <div class="text-secondary small">${dayName}</div>
                 </td>
-                <td class="text-end fw-bold text-dark">Total: ৳${memberTotal}</td>
-                <td></td>
+                
+                <td class="w-100 text-wrap">
+                    <div class="fw-bold text-dark fs-6">${memberName} <span class="text-muted fw-normal small ms-1">(${roomNum})</span></div>
+                    ${typeBadge}
+                </td>
+                
+                <td class="text-end fw-bold ${amountColor} text-nowrap" style="width: 1%; padding-right: 20px; font-size: 1.1rem;">
+                    ${displayAmount}
+                </td>
+                
+                <td class="text-end pe-3 pe-md-4" style="width: 1%;">
+                    <button onclick="deleteDeposit('${entry._id}')" class="btn btn-sm btn-light text-danger border shadow-sm p-1" title="Delete">
+                        <i class="bi bi-trash" style="font-size: 0.9rem;"></i>
+                    </button>
+                </td>
             </tr>
         `;
-
-        // --- ম্যাজিক আপডেট: একদম লেটেস্ট এন্ট্রি সবার উপরে রাখার লজিক ---
-        const sortedItems = items.sort((a, b) => {
-            const dateDiff = new Date(b.date) - new Date(a.date);
-            if (dateDiff !== 0) return dateDiff; // যদি তারিখ আলাদা হয়, তবে তারিখ অনুযায়ী সাজাবে
-
-            // যদি তারিখ একই হয়, তবে ডাটাবেসে সেভ হওয়া লেটেস্ট আইডি (Time) অনুযায়ী সাজাবে
-            return String(b._id).localeCompare(String(a._id));
-        });
-
-        sortedItems.forEach(entry => {
-            const dateObj = new Date(entry.date);
-            const niceDate = dateObj.toLocaleDateString('en-GB');
-            const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
-
-            const isRefund = entry.amount < 0;
-            const typeText = isRefund ? '<span class="text-danger fw-bold"><i class="bi bi-arrow-return-left me-1"></i> Refund</span>' : 'Cash In';
-            const amountColor = isRefund ? 'text-danger' : 'text-success';
-
-            tbody.innerHTML += `
-                <tr>
-                    <td class="text-muted small ps-4">↳ ${niceDate} <span class="text-secondary" style="font-size: 0.75rem;">(${dayName})</span></td>
-                    <td class="text-muted small">${typeText}</td>
-                    <td class="text-end fw-bold ${amountColor}">৳${entry.amount}</td>
-                    <td class="text-end">
-                        <button onclick="deleteDeposit('${entry._id}')" class="btn btn-sm btn-outline-danger" title="Delete">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
     });
 }
 
@@ -770,15 +788,32 @@ async function saveManager() {
     }
 }
 
-// Report টেবিল আপডেট করা (যাতে ব্যালেন্স দেখায়)
+// Report টেবিল আপডেট করা (যাতে ব্যালেন্স দেখায় এবং ০ মিলের মেম্বার হাইড হয়)
 function renderReportTable() {
     document.getElementById('report-expense').innerText = state.report.totalExpense;
     document.getElementById('report-meals').innerText = state.report.totalMeals;
-    document.getElementById('report-rate').innerText = state.report.mealRate.toFixed(2);
+
+    // Fixed মোড থাকলে রেট না দেখিয়ে "Fixed System" দেখাবে
+    if (state.report.calcMode === 'fixed') {
+        document.getElementById('report-rate').innerHTML = '<span class="fs-6">Fixed System</span>';
+    } else {
+        document.getElementById('report-rate').innerText = state.report.mealRate.toFixed(2);
+    }
 
     const tbody = document.getElementById('table-report');
     tbody.innerHTML = '';
-    state.report.members.forEach(member => {
+
+    // ম্যাজিক: যাদের মিল ০ (শূন্য), তাদের ফিল্টার করে লিস্ট থেকে বাদ দেওয়া হচ্ছে
+    const activeReportMembers = state.report.members.filter(member => member.totalMeals > 0);
+
+    // যদি সবারই মিল ০ হয়
+    if (activeReportMembers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">এই তারিখে কোনো মিল ডেটা পাওয়া যায়নি।</td></tr>`;
+        return;
+    }
+
+    // শুধু মিল থাকা মেম্বারদের টেবিলে দেখানো হচ্ছে
+    activeReportMembers.forEach(member => {
         // ব্যালেন্স যদি মাইনাস হয় (বাকি থাকে) তাহলে লাল, আর প্লাস হলে (অ্যাডভান্স) সবুজ
         const balanceColor = member.balance < 0 ? 'text-danger' : 'text-success';
         const balanceText = member.balance < 0 ? `Due: ৳${Math.abs(member.balance).toFixed(2)}` : `Adv: ৳${member.balance.toFixed(2)}`;
@@ -805,33 +840,51 @@ function renderReportTable() {
 // --- BALANCE TABLE LOGIC ---
 function renderBalanceTable() {
     const tbody = document.getElementById('table-balance');
+    const dueEl = document.getElementById('total-due-amount');
+    const advEl = document.getElementById('total-adv-amount');
+    
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // যদি রিপোর্ট ডেটা না থাকে
+    let totalDue = 0;
+    let totalAdv = 0;
+
     if (!state.report || !state.report.members || state.report.members.length === 0) {
         tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted py-4">No balance data available. Select a date range from the Dashboard first.</td></tr>`;
+        if (dueEl) dueEl.innerText = "0.00";
+        if (advEl) advEl.innerText = "0.00";
         return;
     }
 
     state.report.members.forEach(member => {
-        // ব্যালেন্স যদি মাইনাস হয় (বাকি থাকে) তাহলে লাল, আর প্লাস হলে (অ্যাডভান্স) সবুজ
+        // ১. ম্যাজিক: লুপ চলার সাথেই Total Due এবং Total Advance হিসাব করে ফেলা
+        if (member.balance < 0) {
+            totalDue += Math.abs(member.balance); // মাইনাস থাকলে Due তে যোগ হবে
+        } else if (member.balance > 0) {
+            totalAdv += member.balance; // প্লাস থাকলে Advance এ যোগ হবে
+        }
+
         const balanceColor = member.balance < 0 ? 'text-danger' : 'text-success';
         const balanceText = member.balance < 0 ? `Due: ৳${Math.abs(member.balance).toFixed(2)}` : `Adv: ৳${member.balance.toFixed(2)}`;
         const managerBadge = member.isManager ? '<span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">Manager</span>' : '';
 
+        // রেসপন্সিভ ডিজাইন
         tbody.innerHTML += `
             <tr>
-                <td class="ps-4">
+                <td class="ps-2 ps-md-4 align-middle w-100">
                     <div class="fw-bold text-dark">${member.name} ${managerBadge}</div>
                     <small class="text-muted"><i class="bi bi-door-closed"></i> Room: ${member.room}</small>
                 </td>
-                <td class="text-end pe-4 fw-bold ${balanceColor}" style="font-size: 1.1rem;">
+                <td class="text-end pe-2 pe-md-4 align-middle fw-bold ${balanceColor}" style="font-size: 1.1rem; width: 1%; white-space: nowrap;">
                     ${balanceText}
                 </td>
             </tr>
         `;
     });
+
+    // ২. হিসাব করা ব্যালেন্সগুলো হেডারের বক্সে বসিয়ে দেওয়া
+    if (dueEl) dueEl.innerText = totalDue.toFixed(2);
+    if (advEl) advEl.innerText = totalAdv.toFixed(2);
 }
 
 // --- LOW BALANCE ALERT LOGIC ---
@@ -879,11 +932,22 @@ function renderLowBalanceAlert() {
 
     lowBalanceMembers.forEach(member => {
         const balanceColor = member.balance < 0 ? 'text-danger' : 'text-warning text-dark';
+        const displayBalance = Math.abs(member.balance).toFixed(2);
+        
+        // ম্যাজিক: member.balance সরাসরি পাঠানো হচ্ছে (মাইনাস সহ), যাতে মেসেজ আলাদা করা যায়!
+        const phoneStr = member.phone || '';
+        const waBtn = phoneStr ? 
+            `<button onclick="sendWhatsAppMsg('${phoneStr}', '${member.name}', ${member.balance})" class="btn btn-sm btn-success rounded-circle shadow-sm ms-2" style="width: 28px; height: 28px; padding: 0; line-height: 1;" title="Send WhatsApp Message"><i class="bi bi-whatsapp" style="font-size: 0.85rem;"></i></button>` : 
+            `<button class="btn btn-sm btn-light text-muted border rounded-circle shadow-sm ms-2" title="No Phone Number Added" style="width: 28px; height: 28px; padding: 0; line-height: 1;" disabled><i class="bi bi-whatsapp" style="font-size: 0.85rem;"></i></button>`;
+
         tbody.innerHTML += `
             <tr>
-                <td class="fw-bold text-dark">${member.name}</td>
-                <td class="text-muted"><small>${member.room}</small></td>
-                <td class="text-end fw-bold pe-3 ${balanceColor}">৳${member.balance.toFixed(2)}</td>
+                <td class="fw-bold text-dark align-middle">${member.name}</td>
+                <td class="text-muted align-middle"><small>${member.room}</small></td>
+                <td class="text-end fw-bold pe-3 align-middle ${balanceColor}">
+                    ${member.balance < 0 ? '৳-' : '৳'}${displayBalance}
+                    ${waBtn}
+                </td>
             </tr>
         `;
     });
@@ -924,4 +988,35 @@ function populateBazarShopper() {
     const localISOTime = (new Date(today.getTime() - offset)).toISOString().split('T')[0];
     const dateInput = document.getElementById('bazar-bulk-date');
     if(dateInput) dateInput.value = localISOTime;
+}
+
+function populateSettingsForm() {
+    const s = state.settings;
+    if(!s) return;
+
+    const modeSelect = document.getElementById('setting-calc-mode');
+    if (modeSelect) {
+        modeSelect.value = s.calcMode || 'average';
+        if (typeof toggleFixedRates === 'function') toggleFixedRates();
+    }
+
+    const setVal = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined) el.value = val; };
+    setVal('rate-breakfast', s.rateBreakfast);
+    setVal('rate-lunch', s.rateLunch);
+    setVal('rate-dinner', s.rateDinner);
+    setVal('rate-sehri', s.rateSehri);
+    setVal('rate-iftar', s.rateIftar);
+
+    // ড্যাশবোর্ডের ব্যাজে নাম আপডেট করা
+    const modeTextEl = document.getElementById('calc-mode-text');
+    const calcModeBadge = document.getElementById('display-calc-mode');
+    if (modeTextEl && calcModeBadge) {
+        if (s.calcMode === 'fixed') {
+            modeTextEl.innerText = 'Fixed Rate';
+            calcModeBadge.className = 'badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-50';
+        } else {
+            modeTextEl.innerText = 'Average';
+            calcModeBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success border-opacity-25';
+        }
+    }
 }

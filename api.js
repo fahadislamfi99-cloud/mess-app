@@ -12,6 +12,7 @@ async function loadAllData() {
         await fetchBazar();
         await fetchMeals();
         await fetchDeposits();
+        await fetchSettings();
         await fetchReport();
     } catch (error) {
         console.error("API Fetch Error:", error);
@@ -54,11 +55,22 @@ async function fetchDeposits() {
     if (json.success) state.deposits = json.data;
 }
 
+async function fetchSettings() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/settings`);
+        const json = await res.json();
+        if (json.success && json.data) {
+            state.settings = json.data;
+        }
+    } catch (error) { console.error("Error fetching settings:", error); }
+}
+
 // ফ্রন্টএন্ডের আপডেট করা fetchReport ফাংশন
 async function fetchReport() {
     if (!globalStartDate || !globalEndDate) return;
 
     try {
+        // ম্যাজিক: URL এর শেষ থেকে getReportQueryString() অংশটুকু মুছে দেওয়া হলো
         const res = await fetch(`${API_BASE_URL}/report?startDate=${globalStartDate}&endDate=${globalEndDate}`);
         const json = await res.json();
 

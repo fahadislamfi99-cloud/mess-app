@@ -85,7 +85,7 @@ async function checkPIN() {
     }
 }
 
-// নিচের কোড থাকলে শুধু manager date edit করতে পারবে।
+// নিচের কোড থাকলে শুধু manager date edit করতে পারবে এবং অপশনগুলো হাইড হবে।
 function applyAuthRules() {
     const authBtn = document.getElementById('btn-auth');
 
@@ -108,11 +108,17 @@ function applyAuthRules() {
 
         // ম্যানেজার না হলে CSS ম্যাজিকের মাধ্যমে ফর্ম, ডেট ফিল্টার এবং বাটন লুকানো হবে
         styleTag.innerHTML = `
-            /* Date Filter Hide (এটাই সেই ম্যাজিক যা বুটস্ট্র্যাপকে ওভাররাইড করবে) */
+            /* Date Filter Hide */
             div:has(> #global-start-date), 
             div:has(> #global-end-date), 
-            button[onclick="applyGlobalFilter()"] { 
+            button[onclick^="applyGlobalFilter"] { 
                 display: none !important; 
+            }
+
+            /* 🔒 Manager Change Hide (শুধু অ্যাডমিন চেঞ্জ করতে পারবে) 🔒 */
+            div:has(> #select-manager),
+            button[onclick="saveManager()"] {
+                display: none !important;
             }
 
             /* Add Forms Hide */
@@ -124,7 +130,7 @@ function applyAuthRules() {
                 display: none !important; 
             }
             
-            button[onclick^="delete"], button[onclick^="openEdit"] { display: none !important; }
+            button[onclick^="delete"], button[onclick^="openEdit"], button[onclick^="editShopperForDate"] { display: none !important; }
         `;
     }
 }

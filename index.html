@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="styles.css">
 
     <style>
-        
+
     </style>
 </head>
 
@@ -37,20 +37,25 @@
                     <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="members">Members</a></li>
                     <li class="nav-item">
                         <a class="nav-link nav-btn" href="#" data-target="view-balance">
-                            <i class="bi bi-wallet2"></i> Balance
+                            <i class="bi bi-wallet2"></i> Balance & Deposit
                         </a>
-                    </li>
-                    <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="deposits">Add Deposit</a>
                     </li>
                     <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="add-meal">Add Meal</a></li>
                     <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="add-bazar">Add Bazar</a></li>
                     <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="report">Monthly Report</a>
                     </li>
+
+                    <li class="nav-item"><a class="nav-link nav-btn" href="#" data-target="settings"><i
+                                class="bi bi-gear-fill"></i> Settings</a></li>
+
+                    <li class="nav-item ms-lg-3 mt-2 mt-lg-0">
+
                     <li class="nav-item ms-lg-3 mt-2 mt-lg-0">
                         <button id="btn-auth" class="btn btn-warning btn-sm fw-bold" onclick="toggleLogin()">
                             <i class="bi bi-box-arrow-in-right"></i> Manager Login
                         </button>
                     </li>
+
                 </ul>
             </div>
         </div>
@@ -60,50 +65,33 @@
 
         <!-- Month select -->
         <div
-            class="bg-white p-3 shadow-sm mb-4 rounded d-flex flex-wrap justify-content-between align-items-center border-start border-primary border-4">
-            <h5 class="text-primary mb-0 me-3 d-flex align-items-center text-nowrap">
-                <i class="bi bi-calendar-range me-2"></i> Report Period
+            class="bg-white p-3 shadow-sm mb-4 rounded d-flex flex-column flex-md-row justify-content-between align-items-md-center border-start border-primary border-4">
+            <h5 class="text-primary mb-0 d-flex align-items-center flex-wrap gap-2">
+                <div><i class="bi bi-calendar-range me-2"></i> Report Period</div>
+
                 <span id="display-date-range"
-                    class="badge bg-primary bg-opacity-10 text-primary ms-2 border border-primary border-opacity-25"
+                    class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25"
                     style="font-size: 0.85rem;"></span>
+
+                <span id="display-calc-mode"
+                    class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25"
+                    style="font-size: 0.85rem;">
+                    <i class="bi bi-calculator me-1"></i> <span id="calc-mode-text">Average</span> System
+                </span>
             </h5>
-            <div class="d-flex align-items-center flex-wrap gap-3 mt-2 mt-md-0">
-                <div class="d-flex align-items-center">
-                    <label class="text-muted small fw-bold me-2">From:</label>
-                    <input type="date" id="global-start-date"
-                        class="form-control form-control-sm border-primary fw-bold text-dark">
-                </div>
-                <div class="d-flex align-items-center">
-                    <label class="text-muted small fw-bold me-2">To:</label>
-                    <input type="date" id="global-end-date"
-                        class="form-control form-control-sm border-primary fw-bold text-dark">
-                </div>
-                <button class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="applyGlobalFilter()">
-                    <i class="bi bi-search"></i> Show Data
-                </button>
-            </div>
+
+            <button class="btn btn-sm btn-outline-secondary mt-3 mt-md-0 rounded-pill px-3"
+                onclick="toggleSettingsView()">
+                <i class="bi bi-pencil-square me-1"></i> Change Period
+            </button>
         </div>
         <!-- Month select -->
 
         <div id="dashboard" class="view-section">
             <h3 class="mb-4">Dashboard Overview</h3>
             <div class="row g-4">
-                <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-primary border-4">
-                        <div class="card-body">
-                            <p class="text-muted mb-1">Total Members</p>
-                            <h2 id="stat-members" class="mb-0">0</h2>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-success border-4">
-                        <div class="card-body">
-                            <p class="text-muted mb-1">Total Meals (Month)</p>
-                            <h2 id="stat-meals" class="mb-0">0</h2>
-                        </div>
-                    </div>
-                </div>
+
+                <!-- Current meal rate -->
                 <div class="col-12 col-md-4">
                     <div class="card stat-card shadow-sm border-0 border-start border-warning border-4">
                         <div class="card-body">
@@ -112,6 +100,20 @@
                         </div>
                     </div>
                 </div>
+                <!-- Current meal rate -->
+
+                <!-- Cash in hand -->
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-dark border-4" id="card-cash">
+                        <div class="card-body">
+                            <p class="text-muted mb-1 fw-bold" id="title-cash">Cash in Hand (ক্যাশ আছে)</p>
+                            <h2 class="mb-0 text-dark" id="text-cash">৳<span id="stat-cash">0</span></h2>
+                        </div>
+                    </div>
+                </div>
+                <!-- Cash in hand -->
+
+
                 <div class="col-12 col-md-4">
                     <div class="card stat-card shadow-sm border-0 border-start border-danger border-4">
                         <div class="card-body">
@@ -129,10 +131,18 @@
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-dark border-4" id="card-cash">
+                    <div class="card stat-card shadow-sm border-0 border-start border-primary border-4">
                         <div class="card-body">
-                            <p class="text-muted mb-1 fw-bold" id="title-cash">Cash in Hand (ক্যাশ আছে)</p>
-                            <h2 class="mb-0 text-dark" id="text-cash">৳<span id="stat-cash">0</span></h2>
+                            <p class="text-muted mb-1">Total Members</p>
+                            <h2 id="stat-members" class="mb-0">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-success border-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Meals (Month)</p>
+                            <h2 id="stat-meals" class="mb-0">0</h2>
                         </div>
                     </div>
                 </div>
@@ -215,6 +225,11 @@
                                     <label class="form-label">Room Number</label>
                                     <input type="text" class="form-control" required>
                                 </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">WhatsApp Number</label>
+                                    <input type="text" class="form-control border-primary" id="add-member-phone"
+                                        placeholder="01XXX...">
+                                </div>
                                 <button type="submit" class="btn btn-primary w-100">Add Member</button>
                             </form>
                         </div>
@@ -244,102 +259,7 @@
         </div>
 
         <!-- Deposit Start -->
-        <div id="deposits" class="view-section d-none">
-            <h3 class="mb-4"><i class="bi bi-wallet2 text-primary me-2"></i>Member Deposits</h3>
 
-            <div class="row">
-                <div class="col-lg-4 col-md-5 mb-4">
-
-                    <div class="card shadow-sm border-0 border-start border-success border-4 mb-4">
-                        <div class="card-header bg-white pb-0 border-0">
-                            <h5 class="mb-0 text-success"><i class="bi bi-cash-stack me-2"></i>Add Money</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="form-add-deposit">
-                                <div class="mb-3">
-                                    <label class="form-label text-muted small fw-bold">Date</label>
-                                    <input type="date" class="form-control bg-light" id="deposit-date" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label text-muted small fw-bold">Select Member</label>
-                                    <select class="form-select bg-light" id="deposit-member" required>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label text-muted small fw-bold">Amount (৳)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-success text-white border-success">৳</span>
-                                        <input type="number" class="form-control border-success" id="deposit-amount"
-                                            placeholder="যেমন: 2000" required>
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-success w-100 fw-bold"><i
-                                        class="bi bi-plus-circle me-1"></i> Save Deposit</button>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div class="card shadow-sm border-0 border-start border-danger border-4">
-                        <div class="card-header bg-white pb-0 border-0">
-                            <h5 class="mb-0 text-danger"><i class="bi bi-arrow-return-left me-2"></i>Refund Money</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="form-refund-money">
-                                <div class="mb-3">
-                                    <label class="form-label text-muted small fw-bold">Date</label>
-                                    <input type="date" id="refund-date" class="form-control bg-light" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label text-muted small fw-bold">Select Member</label>
-                                    <select id="refund-member" class="form-select bg-light" required>
-                                        <option value="" disabled selected>-- মেম্বার সিলেক্ট করুন --</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label text-muted small fw-bold">Refund Amount (৳)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-danger text-white border-danger">৳</span>
-                                        <input type="number" id="refund-amount" class="form-control border-danger"
-                                            placeholder="যেমন: 500" required min="1">
-                                    </div>
-                                    <div class="form-text text-danger small mt-1"><i class="bi bi-info-circle"></i>
-                                        অ্যামাউন্ট অটোমেটিক মাইনাস হয়ে যাবে।</div>
-                                </div>
-                                <button type="submit" class="btn btn-outline-danger w-100 fw-bold">Confirm
-                                    Refund</button>
-                            </form>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="col-lg-8 col-md-7">
-                    <div class="card shadow-sm border-0 h-100">
-                        <div
-                            class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 text-dark"><i class="bi bi-clock-history text-secondary me-2"></i>Deposit
-                                History</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive" style="max-height: 700px; overflow-y: auto;">
-                                <table class="table table-hover table-striped align-middle mb-0">
-                                    <thead class="table-light sticky-top">
-                                        <tr>
-                                            <th class="ps-3">Date</th>
-                                            <th>Member Name</th>
-                                            <th class="text-end">Amount</th>
-                                            <th class="text-end pe-3">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="table-deposits">
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Deposit END -->
 
@@ -458,7 +378,9 @@
                                             <span class="text-dark"><i class="bi bi-person-badge text-primary"></i>
                                                 <strong id="display-shopper-name"
                                                     class="text-primary fs-6"></strong></span>
-                                            <button class="btn btn-sm btn-outline-primary px-3 rounded-pill" onclick="editBazarInfo()"><i class="bi bi-pencil"></i> Edit Info</button>
+                                            <button class="btn btn-sm btn-outline-primary px-3 rounded-pill"
+                                                onclick="editBazarInfo()"><i class="bi bi-pencil"></i> Edit
+                                                Info</button>
                                         </div>
 
                                         <form id="form-add-temp-item" class="mb-3">
@@ -622,21 +544,7 @@
                 </button>
             </div>
 
-            <div class="card shadow-sm border-0 mb-4 bg-white">
-                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center">
-                    <div class="mb-3 mb-md-0">
-                        <h5 class="mb-0 text-primary">Manager for this Month</h5>
-                        <small class="text-muted" id="current-manager-name">No manager assigned yet</small>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <select class="form-select" id="select-manager">
-                            <option value="">Choose Member...</option>
-                        </select>
-                        <button class="btn btn-outline-primary text-nowrap" onclick="saveManager()">Set
-                            Manager</button>
-                    </div>
-                </div>
-            </div>
+
 
             <div class="card shadow-sm border-0 mb-4 bg-primary text-white">
                 <div class="card-body d-flex justify-content-around text-center py-4">
@@ -695,6 +603,11 @@
                             <div class="mb-3">
                                 <label class="form-label">Room Number</label>
                                 <input type="text" class="form-control" id="edit-member-room" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">WhatsApp Number</label>
+                                <input type="text" class="form-control border-primary" id="edit-member-phone"
+                                    placeholder="01XXX...">
                             </div>
                             <button type="submit" class="btn btn-primary w-100">Update Member</button>
                         </form>
@@ -798,32 +711,271 @@
         </div>
         <!-- Daily Meal Modal -->
 
-        <!-- Balance Modal -->
+        <!-- Balance Section -->
         <div id="view-balance" class="view-section d-none">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 mt-3">
-                <h3 class="mb-0 text-primary"><i class="bi bi-wallet2"></i> Member Balances</h3>
+                <h3 class="mb-0 text-primary"><i class="bi bi-wallet2 me-2"></i>Balance & Deposits</h3>
                 <small class="text-muted mt-2 mt-md-0">* This balance is based on the currently selected Report
                     period.</small>
             </div>
 
-            <div class="card shadow-sm border-0 border-start border-success border-4" style="background-color: white;">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Member Details</th>
-                                    <th class="text-end">Current Balance</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-balance">
-                            </tbody>
-                        </table>
+            <div class="row">
+                <div class="col-lg-4 col-12 mb-4">
+
+                    <div class="card shadow-sm border-0 border-start border-success border-4 mb-4">
+                        <div class="card-header bg-white pb-0 border-0">
+                            <h5 class="mb-0 text-success"><i class="bi bi-cash-stack me-2"></i>Add Money</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-add-deposit">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Date</label>
+                                    <input type="date" class="form-control bg-light" id="deposit-date" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Select Member</label>
+                                    <select class="form-select bg-light" id="deposit-member" required>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Amount (৳)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-success text-white border-success">৳</span>
+                                        <input type="number" class="form-control border-success" id="deposit-amount"
+                                            placeholder="যেমন: 2000" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100 fw-bold"><i
+                                        class="bi bi-plus-circle me-1"></i> Save Deposit</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 border-start border-danger border-4">
+                        <div class="card-header bg-white pb-0 border-0">
+                            <h5 class="mb-0 text-danger"><i class="bi bi-arrow-return-left me-2"></i>Refund Money</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-refund-money">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Date</label>
+                                    <input type="date" id="refund-date" class="form-control bg-light" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Select Member</label>
+                                    <select id="refund-member" class="form-select bg-light" required>
+                                        <option value="" disabled selected>-- মেম্বার সিলেক্ট করুন --</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Refund Amount (৳)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-danger text-white border-danger">৳</span>
+                                        <input type="number" id="refund-amount" class="form-control border-danger"
+                                            placeholder="যেমন: 500" required min="1">
+                                    </div>
+                                    <div class="form-text text-danger small mt-1"><i class="bi bi-info-circle"></i>
+                                        অ্যামাউন্ট অটোমেটিক মাইনাস হয়ে যাবে।</div>
+                                </div>
+                                <button type="submit" class="btn btn-outline-danger w-100 fw-bold">Confirm
+                                    Refund</button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="col-lg-8 col-12">
+
+                    <div class="card shadow-sm border-0 border-start border-primary border-4 mb-4"
+                        style="background-color: white;">
+                        <div
+                            class="card-header bg-white pb-0 border-0 d-flex justify-content-between align-items-center">
+                            <div
+                                class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center w-100 mb-3">
+
+                                <h5 class="mb-2 mb-md-0 text-primary fw-bold">
+                                    <i class="bi bi-people-fill me-2"></i>Current Balances
+                                </h5>
+
+                                <div class="d-flex flex-wrap gap-2" style="font-size: 0.85rem;">
+                                    <span
+                                        class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 shadow-sm d-flex align-items-center">
+                                        Total Due: <span class="fs-6 fw-bold ms-1">৳<span
+                                                id="total-due-amount">0.00</span></span>
+                                    </span>
+                                    <span
+                                        class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 shadow-sm d-flex align-items-center">
+                                        Total Adv: <span class="fs-6 fw-bold ms-1">৳<span
+                                                id="total-adv-amount">0.00</span></span>
+                                    </span>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th class="ps-4">Member Info</th>
+                                            <th class="text-end pe-4">Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-balance">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div
+                            class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 text-dark"><i class="bi bi-clock-history text-secondary me-2"></i>Deposit
+                                History</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-hover table-striped align-middle mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th class="ps-3">Date</th>
+                                            <th>Member Name</th>
+                                            <th class="text-end">Amount</th>
+                                            <th class="text-end pe-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-deposits">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- Balance Section -->
+
+        <!-- Settings Modal -->
+        <div id="settings" class="view-section d-none">
+            <h3 class="mb-4 text-dark"><i class="bi bi-gear-fill text-secondary me-2"></i>App Settings</h3>
+
+            <div class="row">
+                <div class="col-lg-6 col-12 d-flex flex-column gap-4 mb-4">
+
+                    <div class="card shadow-sm border-0 border-start border-primary border-4">
+                        <div class="card-header bg-white pb-0 border-0">
+                            <h5 class="mb-0 text-primary"><i class="bi bi-calendar-date me-2"></i>Report Period</h5>
+                            <p class="text-muted small mt-1">যে তারিখের রিপোর্ট ও হিসাব দেখতে চান, তা সিলেক্ট করুন।</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold">From Date:</label>
+                                <input type="date" id="global-start-date"
+                                    class="form-control border-primary fw-bold text-dark">
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold">To Date:</label>
+                                <input type="date" id="global-end-date"
+                                    class="form-control border-primary fw-bold text-dark">
+                            </div>
+                            <button class="btn btn-primary w-100 fw-bold shadow-sm mt-2 py-2"
+                                onclick="applyGlobalFilterAndGoHome()">
+                                <i class="bi bi-search me-1"></i> Apply & Show Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 border-start border-info border-4">
+                        <div class="card-header bg-white pb-0 border-0">
+                            <h5 class="mb-0 text-info"><i class="bi bi-person-badge me-2"></i>Month Manager</h5>
+                            <p class="text-muted small mt-1">এই মাসের জন্য ম্যানেজার সিলেক্ট করুন (ম্যানেজারের মিল
+                                ফ্রি)।</p>
+                        </div>
+                        <div class="card-body">
+                            <div
+                                class="mb-3 d-flex justify-content-between align-items-center bg-light p-2 rounded border border-info border-opacity-25">
+                                <span class="text-muted small fw-bold">Current Manager:</span>
+                                <span class="text-dark fw-bold text-end" id="current-manager-name"
+                                    style="font-size: 0.9rem;">No manager assigned</span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold">Change Manager:</label>
+                                <select class="form-select border-info fw-bold" id="select-manager">
+                                    <option value="">Choose Member...</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-info text-white w-100 fw-bold shadow-sm py-2"
+                                onclick="saveManager()">
+                                <i class="bi bi-check-circle me-1"></i> Set Manager
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="col-lg-6 col-12 mb-4">
+                    <div class="card shadow-sm border-0 border-start border-dark border-4 h-100">
+                        <div class="card-header bg-white pb-0 border-0">
+                            <h5 class="mb-0 text-dark"><i class="bi bi-calculator me-2"></i>Meal Rate System</h5>
+                            <p class="text-muted small mt-1">এই মাসের মেস বিল কীভাবে হিসাব করা হবে তা নির্বাচন করুন।</p>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-meal-settings">
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">Calculation Mode</label>
+                                    <select class="form-select border-dark fw-bold" id="setting-calc-mode"
+                                        onchange="toggleFixedRates()">
+                                        <option value="average">Average System (মোট বাজার ÷ মোট মিল)</option>
+                                        <option value="fixed">Fixed System (প্রতি বেলার জন্য নির্দিষ্ট রেট)</option>
+                                    </select>
+                                </div>
+
+                                <div id="fixed-rates-container" class="d-none bg-light p-3 rounded border mb-4">
+                                    <h6 class="text-primary mb-3"><i class="bi bi-tag-fill me-1"></i>Set Fixed Rates (৳)
+                                    </h6>
+
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <label class="small fw-bold text-muted">Breakfast</label>
+                                            <input type="number" class="form-control form-control-sm"
+                                                id="rate-breakfast" value="30" min="0">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="small fw-bold text-muted">Lunch</label>
+                                            <input type="number" class="form-control form-control-sm" id="rate-lunch"
+                                                value="60" min="0">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="small fw-bold text-muted">Dinner</label>
+                                            <input type="number" class="form-control form-control-sm" id="rate-dinner"
+                                                value="50" min="0">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="small fw-bold text-muted">Sehri</label>
+                                            <input type="number" class="form-control form-control-sm" id="rate-sehri"
+                                                value="40" min="0">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="small fw-bold text-muted">Iftar</label>
+                                            <input type="number" class="form-control form-control-sm" id="rate-iftar"
+                                                value="50" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-dark w-100 fw-bold py-2"><i
+                                        class="bi bi-save me-1"></i> Save Settings</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Balance Modal -->
+        <!-- Settings Modal -->
 
     </div>
 
@@ -853,15 +1005,20 @@
     <script src="api.js"></script>
     <script src="ui.js"></script>
     <script src="app.js"></script>
+
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            new TomSelect("#bazar-item-name", {
-                create: true, // এর ফলে আপনি লিস্টের বাইরে নতুন যেকোনো নাম টাইপ করেও অ্যাড করতে পারবেন!
-                placeholder: "-- বাজার খুঁজুন বা সিলেক্ট করুন --",
-                maxItems: 1
-            });
-        });
+        // Settings পেজে Fixed সিলেক্ট করলে বক্সগুলো ওপেন করার লজিক
+        function toggleFixedRates() {
+            const mode = document.getElementById('setting-calc-mode').value;
+            const container = document.getElementById('fixed-rates-container');
+            if (mode === 'fixed') {
+                container.classList.remove('d-none');
+            } else {
+                container.classList.add('d-none');
+            }
+        }
     </script>
+
 </body>
 
 </html>
