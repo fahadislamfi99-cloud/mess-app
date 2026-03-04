@@ -139,10 +139,10 @@ function renderMembersTable() {
 
     state.members.forEach(member => {
         const tr = document.createElement('tr');
-        
+
         // ম্যাজিক: নম্বর থাকলে সুন্দর হোয়াটসঅ্যাপ আইকন দেখাবে, না থাকলে "No Number" দেখাবে
-        const phoneDisplay = member.phone 
-            ? `<div class="text-muted small mt-1"><i class="bi bi-whatsapp text-success me-1"></i>${member.phone}</div>` 
+        const phoneDisplay = member.phone
+            ? `<div class="text-muted small mt-1"><i class="bi bi-whatsapp text-success me-1"></i>${member.phone}</div>`
             : `<div class="text-muted small mt-1 opacity-50"><i class="bi bi-telephone-x me-1"></i>No Number</div>`;
 
         tr.innerHTML = `
@@ -192,12 +192,12 @@ function renderDeposits() {
         const roomNum = memberObj ? memberObj.room : 'N/A';
 
         const isRefund = entry.amount < 0;
-        
+
         // ২. প্রফেশনাল ব্যাজ (Badge) ডিজাইন
-        const typeBadge = isRefund 
-            ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 mt-1"><i class="bi bi-arrow-return-left me-1"></i>Refund</span>` 
+        const typeBadge = isRefund
+            ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 mt-1"><i class="bi bi-arrow-return-left me-1"></i>Refund</span>`
             : `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 mt-1"><i class="bi bi-cash me-1"></i>Cash In</span>`;
-        
+
         const amountColor = isRefund ? 'text-danger' : 'text-success';
         const displayAmount = isRefund ? `- ৳${Math.abs(entry.amount)}` : `+ ৳${entry.amount}`;
 
@@ -534,16 +534,16 @@ function renderBazarTable() {
     // ==========================================
     // --- ম্যাজিক ১: লেটেস্ট ও পুরনো ডেটা রিডিং (Fix) ---
     // ==========================================
-    const shopperDates = {}; 
+    const shopperDates = {};
     Object.keys(groupedBazar).forEach(date => {
         const items = groupedBazar[date];
         let name = '';
-        
+
         // ১. নতুন প্রফেশনাল সিস্টেম চেক
         const newShopperItem = items.find(i => i.shopper && typeof i.shopper === 'object' && i.shopper.name);
         if (newShopperItem) {
             name = newShopperItem.shopper.name;
-        } 
+        }
         // ২. পুরনো নোট থেকে নাম বের করা (Smart Regex Fix)
         else {
             const oldShopperItem = items.find(i => i.note && i.note.includes('বাজারকারী'));
@@ -554,7 +554,7 @@ function renderBazarTable() {
         }
 
         if (name) {
-            if(!shopperDates[name]) shopperDates[name] = [];
+            if (!shopperDates[name]) shopperDates[name] = [];
             shopperDates[name].push(date);
         }
     });
@@ -600,13 +600,13 @@ function renderBazarTable() {
         const items = groupedBazar[date];
         const dateObj = new Date(date);
         const niceDate = dateObj.toLocaleDateString('en-GB');
-        const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' }); 
+        const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
         const dailyTotal = items.reduce((sum, current) => sum + current.amount, 0);
 
         let shopperName = '';
         let shopperRoom = '';
         let shopperId = '';
-        
+
         // ==========================================
         // --- ম্যাজিক ২: হেডারের জন্য ডেটা বের করা ---
         // ==========================================
@@ -615,7 +615,7 @@ function renderBazarTable() {
             shopperId = newShopperItem.shopper._id || '';
             shopperName = newShopperItem.shopper.name;
             shopperRoom = newShopperItem.shopper.room;
-        } 
+        }
         else {
             const oldShopperItem = items.find(i => i.note && i.note.includes('বাজারকারী'));
             if (oldShopperItem) {
@@ -628,11 +628,11 @@ function renderBazarTable() {
             }
         }
 
-        const shopperHTML = shopperName ? 
+        const shopperHTML = shopperName ?
             `<span onclick="editShopperForDate('${date}', '${shopperId}')" class="badge bg-white border border-primary border-opacity-25 text-primary rounded-pill px-2 py-1 shadow-sm" style="cursor: pointer; transition: 0.2s;" title="Edit Shopper Name" onmouseover="this.classList.add('bg-light')" onmouseout="this.classList.remove('bg-light')">
                 <i class="bi bi-pencil-square me-1"></i>${shopperName} <span class="text-muted fw-normal d-none d-sm-inline ms-1">(${shopperRoom})</span>
-            </span>` 
-            : 
+            </span>`
+            :
             `<span onclick="editShopperForDate('${date}', '')" class="badge bg-light border border-secondary border-opacity-50 text-secondary rounded-pill px-2 py-1 shadow-sm" style="cursor: pointer; transition: 0.2s;" title="Add Shopper Name" onmouseover="this.classList.remove('bg-light', 'text-secondary'); this.classList.add('bg-secondary', 'text-white');" onmouseout="this.classList.remove('bg-secondary', 'text-white'); this.classList.add('bg-light', 'text-secondary');">
                 <i class="bi bi-person-plus-fill me-1"></i>Add Shopper
             </span>`;
@@ -788,12 +788,11 @@ async function saveManager() {
     }
 }
 
-// Report টেবিল আপডেট করা (যাতে ব্যালেন্স দেখায় এবং ০ মিলের মেম্বার হাইড হয়)
+// Report টেবিল আপডেট করা (প্রফেশনাল লুক)
 function renderReportTable() {
     document.getElementById('report-expense').innerText = state.report.totalExpense;
     document.getElementById('report-meals').innerText = state.report.totalMeals;
 
-    // Fixed মোড থাকলে রেট না দেখিয়ে "Fixed System" দেখাবে
     if (state.report.calcMode === 'fixed') {
         document.getElementById('report-rate').innerHTML = '<span class="fs-6">Fixed System</span>';
     } else {
@@ -803,35 +802,36 @@ function renderReportTable() {
     const tbody = document.getElementById('table-report');
     tbody.innerHTML = '';
 
-    // ম্যাজিক: যাদের মিল ০ (শূন্য), তাদের ফিল্টার করে লিস্ট থেকে বাদ দেওয়া হচ্ছে
     const activeReportMembers = state.report.members.filter(member => member.totalMeals > 0);
 
-    // যদি সবারই মিল ০ হয়
     if (activeReportMembers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">এই তারিখে কোনো মিল ডেটা পাওয়া যায়নি।</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-5">কোনো মিল ডেটা পাওয়া যায়নি।</td></tr>`;
         return;
     }
 
-    // শুধু মিল থাকা মেম্বারদের টেবিলে দেখানো হচ্ছে
     activeReportMembers.forEach(member => {
-        // ব্যালেন্স যদি মাইনাস হয় (বাকি থাকে) তাহলে লাল, আর প্লাস হলে (অ্যাডভান্স) সবুজ
-        const balanceColor = member.balance < 0 ? 'text-danger' : 'text-success';
-        const balanceText = member.balance < 0 ? `Due: ৳${Math.abs(member.balance).toFixed(2)}` : `Adv: ৳${member.balance.toFixed(2)}`;
+        // ম্যাজিক: ব্যালেন্স মাইনাস হলে হালকা লাল ব্যাকগ্রাউন্ড, প্লাস হলে হালকা সবুজ
+        const isDue = member.balance < 0;
+        const balanceColorClass = isDue ? 'text-danger fw-bold bg-danger bg-opacity-10' : 'text-success fw-bold bg-success bg-opacity-10';
+        const balanceText = isDue ? `Due: ৳${Math.abs(member.balance).toFixed(2)}` : `Adv: ৳${member.balance.toFixed(2)}`;
 
-        // ম্যানেজার চেক
-        const managerBadge = member.isManager ? '<span class="badge bg-warning text-dark ms-1">Manager</span>' : '';
-        const payableText = member.isManager ? '<span class="text-success small fw-bold">Free (Manager)</span>' : `৳${member.payableAmount.toFixed(2)}`;
+        const managerBadge = member.isManager ? '<span class="badge bg-warning text-dark ms-2 border" style="font-size: 0.65rem;">Manager</span>' : '';
+        const payableText = member.isManager ? '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Free (Manager)</span>' : `৳${member.payableAmount.toFixed(2)}`;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>
-                <div class="fw-bold">${member.name} ${managerBadge}</div>
+            <td class="px-3 align-middle">
+                <div class="fw-bold text-dark fs-6">${member.name} ${managerBadge}</div>
                 <small class="text-muted">Room: ${member.room}</small>
             </td>
-            <td class="text-center"><span class="badge bg-primary rounded-pill">${member.totalMeals}</span></td>
-            <td class="text-end text-muted">${payableText}</td>
-            <td class="text-end fw-bold text-success">৳${member.depositedAmount.toFixed(2)}</td>
-            <td class="text-end fw-bold ${balanceColor}">${balanceText}</td>
+            <td class="text-center align-middle">
+                <span class="badge bg-secondary rounded-pill px-3">${member.totalMeals}</span>
+            </td>
+            <td class="text-end align-middle text-muted">${payableText}</td>
+            <td class="text-end align-middle fw-bold text-primary">৳${member.depositedAmount.toFixed(2)}</td>
+            <td class="text-end align-middle px-3 ${balanceColorClass}" style="font-size: 1.05rem;">
+                ${balanceText}
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -842,7 +842,7 @@ function renderBalanceTable() {
     const tbody = document.getElementById('table-balance');
     const dueEl = document.getElementById('total-due-amount');
     const advEl = document.getElementById('total-adv-amount');
-    
+
     if (!tbody) return;
     tbody.innerHTML = '';
 
@@ -857,26 +857,26 @@ function renderBalanceTable() {
     }
 
     state.report.members.forEach(member => {
-        // ১. ম্যাজিক: লুপ চলার সাথেই Total Due এবং Total Advance হিসাব করে ফেলা
         if (member.balance < 0) {
-            totalDue += Math.abs(member.balance); // মাইনাস থাকলে Due তে যোগ হবে
+            totalDue += Math.abs(member.balance); 
         } else if (member.balance > 0) {
-            totalAdv += member.balance; // প্লাস থাকলে Advance এ যোগ হবে
+            totalAdv += member.balance; 
         }
 
         const balanceColor = member.balance < 0 ? 'text-danger' : 'text-success';
         const balanceText = member.balance < 0 ? `Due: ৳${Math.abs(member.balance).toFixed(2)}` : `Adv: ৳${member.balance.toFixed(2)}`;
         const managerBadge = member.isManager ? '<span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">Manager</span>' : '';
 
-        // রেসপন্সিভ ডিজাইন
+        // ম্যাজিক: পুরো Row (tr) টাকে ক্লিকেবল করা হলো এবং hover ইফেক্ট দেওয়া হলো
         tbody.innerHTML += `
-            <tr>
-                <td class="ps-2 ps-md-4 align-middle w-100">
-                    <div class="fw-bold text-dark">${member.name} ${managerBadge}</div>
+            <tr onclick="showMemberHistory('${member.memberId || member._id}')" class="align-middle" style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor='transparent'" title="${member.name} এর হিস্ট্রি দেখতে ক্লিক করুন">
+                <td class="ps-2 ps-md-4 w-100 py-3 border-bottom">
+                    <div class="fw-bold text-dark fs-6">${member.name} ${managerBadge}</div>
                     <small class="text-muted"><i class="bi bi-door-closed"></i> Room: ${member.room}</small>
                 </td>
-                <td class="text-end pe-2 pe-md-4 align-middle fw-bold ${balanceColor}" style="font-size: 1.1rem; width: 1%; white-space: nowrap;">
+                <td class="text-end pe-2 pe-md-4 fw-bold ${balanceColor} border-bottom" style="font-size: 1.1rem; width: 1%; white-space: nowrap;">
                     ${balanceText}
+                    <i class="bi bi-chevron-right ms-2 text-secondary opacity-50" style="font-size: 0.9rem;"></i>
                 </td>
             </tr>
         `;
@@ -933,11 +933,11 @@ function renderLowBalanceAlert() {
     lowBalanceMembers.forEach(member => {
         const balanceColor = member.balance < 0 ? 'text-danger' : 'text-warning text-dark';
         const displayBalance = Math.abs(member.balance).toFixed(2);
-        
+
         // ম্যাজিক: member.balance সরাসরি পাঠানো হচ্ছে (মাইনাস সহ), যাতে মেসেজ আলাদা করা যায়!
         const phoneStr = member.phone || '';
-        const waBtn = phoneStr ? 
-            `<button onclick="sendWhatsAppMsg('${phoneStr}', '${member.name}', ${member.balance})" class="btn btn-sm btn-success rounded-circle shadow-sm ms-2" style="width: 28px; height: 28px; padding: 0; line-height: 1;" title="Send WhatsApp Message"><i class="bi bi-whatsapp" style="font-size: 0.85rem;"></i></button>` : 
+        const waBtn = phoneStr ?
+            `<button onclick="sendWhatsAppMsg('${phoneStr}', '${member.name}', ${member.balance})" class="btn btn-sm btn-success rounded-circle shadow-sm ms-2" style="width: 28px; height: 28px; padding: 0; line-height: 1;" title="Send WhatsApp Message"><i class="bi bi-whatsapp" style="font-size: 0.85rem;"></i></button>` :
             `<button class="btn btn-sm btn-light text-muted border rounded-circle shadow-sm ms-2" title="No Phone Number Added" style="width: 28px; height: 28px; padding: 0; line-height: 1;" disabled><i class="bi bi-whatsapp" style="font-size: 0.85rem;"></i></button>`;
 
         tbody.innerHTML += `
@@ -972,7 +972,7 @@ function populateBazarShopper() {
     const select = document.getElementById('bazar-bulk-member');
     if (!select) return;
     select.innerHTML = '<option value="" disabled selected>-- মেম্বার সিলেক্ট করুন --</option>';
-    
+
     // শুধু অ্যাক্টিভ মেম্বারদের রুম নাম্বার অনুযায়ী সাজিয়ে দেখানো
     const activeMembers = state.members
         .filter(m => m.isActive)
@@ -987,12 +987,12 @@ function populateBazarShopper() {
     const offset = today.getTimezoneOffset() * 60000;
     const localISOTime = (new Date(today.getTime() - offset)).toISOString().split('T')[0];
     const dateInput = document.getElementById('bazar-bulk-date');
-    if(dateInput) dateInput.value = localISOTime;
+    if (dateInput) dateInput.value = localISOTime;
 }
 
 function populateSettingsForm() {
     const s = state.settings;
-    if(!s) return;
+    if (!s) return;
 
     const modeSelect = document.getElementById('setting-calc-mode');
     if (modeSelect) {
@@ -1000,7 +1000,7 @@ function populateSettingsForm() {
         if (typeof toggleFixedRates === 'function') toggleFixedRates();
     }
 
-    const setVal = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined) el.value = val; };
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
     setVal('rate-breakfast', s.rateBreakfast);
     setVal('rate-lunch', s.rateLunch);
     setVal('rate-dinner', s.rateDinner);

@@ -93,3 +93,91 @@ body {
         margin: 0.5cm;
     }
 }
+
+/* ========================================== */
+    /* 🖨️ SMART PDF PRINT OPTIMIZATION 🖨️ */
+    /* ========================================== */
+    @media print {
+        body { background-color: #fff !important; }
+        
+        /* বাটন, মেনুবার এবং ফর্ম (ইনপুট বক্স) প্রিন্টে হাইড করা হবে */
+        .navbar, .btn, .nav-btn, form { display: none !important; }
+        
+        .card { border: none !important; box-shadow: none !important; }
+        .shadow-sm { box-shadow: none !important; } 
+        
+        /* ম্যাজিক: ড্যাশবোর্ডের যে পেজটি ওপেন থাকবে, ব্রাউজার অটোমেটিক শুধু সেটিকেই প্রিন্ট করবে! */
+        .view-section:not(.d-none) { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .d-print-flex { display: flex !important; }
+    }
+
+
+    /* ========================================== */
+/* ✨ PAGE TRANSITION ANIMATION ✨ */
+/* ========================================== */
+
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px); /* ২০ পিক্সেল নিচ থেকে শুরু হবে */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0); /* একদম সঠিক জায়গায় এসে থামবে */
+    }
+}
+
+/* ম্যাজিক: যখনই কোনো সেকশন ওপেন হবে, তখনই এই অ্যানিমেশনটি প্লে হবে */
+.view-section {
+    animation: fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
+/* ========================================== */
+/* 💎 PREMIUM DASHBOARD CARDS 💎 */
+/* ========================================== */
+
+.stat-card {
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background: #ffffff;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 1;
+}
+
+/* মাউস হোভার ইফেক্ট */
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ম্যাজিক: ব্যাকগ্রাউন্ডের জলছাপ আইকন */
+.stat-card .bg-icon {
+    position: absolute;
+    right: -10px;
+    bottom: -20px;
+    font-size: 6rem;
+    opacity: 0.06;
+    z-index: -1;
+    transition: all 0.3s ease;
+}
+
+/* হোভার করলে আইকন হালকা ঘুরবে */
+.stat-card:hover .bg-icon {
+    transform: scale(1.1) rotate(-10deg);
+    opacity: 0.12;
+}
+
+/* টাইপোগ্রাফি সুন্দর করা */
+.stat-card .card-title-text {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.stat-card h2 {
+    font-weight: 800;
+    letter-spacing: -1px;
+}

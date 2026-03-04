@@ -144,16 +144,27 @@ window.applyGlobalFilterAndGoHome = async function() {
 }
 
 
-// --- NAVIGATION LOGIC (With Smart Tab Memory) ---
+// --- NAVIGATION LOGIC (With Smart Tab Memory & Time Limit) ---
 function setupNavigation() {
     const navButtons = document.querySelectorAll('.nav-btn');
     
-    // ১. পেজ লোড হলে আগের সেভ করা ট্যাব বের করা (না পেলে ডিফল্ট 'dashboard' দেখাবে)
-    const savedTarget = localStorage.getItem('activeTab') || 'dashboard';
+    // ১. ম্যাজিক: কতক্ষণ আগে ট্যাব সেভ হয়েছিল তা চেক করা (এখানে ১ ঘণ্টা = 3600000 মিলি-সেকেন্ড দেওয়া হয়েছে)
+    const savedTime = localStorage.getItem('tabSaveTime');
+    const currentTime = new Date().getTime();
+    let savedTarget = 'dashboard'; // ডিফল্টভাবে ড্যাশবোর্ড দেখাবে
+
+    // যদি ১ ঘণ্টার কম সময় হয়ে থাকে, তবেই সেভ করা আগের ট্যাবটি ওপেন করবে
+    if (savedTime && (currentTime - savedTime) < 1800000) { // ৩০ মিনিট = 1800000 মিলি-সেকেন্ড
+        savedTarget = localStorage.getItem('activeTab') || 'dashboard';
+    } else {
+        // অনেক সময় পার হয়ে গেলে পুরনো মেমোরি ডিলিট করে দেবে
+        localStorage.removeItem('activeTab');
+        localStorage.removeItem('tabSaveTime');
+    }
 
     navButtons.forEach(btn => {
         
-        // ২. সেভ করা ট্যাব অনুযায়ী পেজ লোড করার সময় সঠিক সেকশনটি ওপেন রাখা
+        // ২. সেভ করা বা ডিফল্ট ট্যাব অনুযায়ী সঠিক পেজটি ওপেন রাখা
         if(btn.getAttribute('data-target') === savedTarget) {
             navButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -163,13 +174,14 @@ function setupNavigation() {
             if(targetEl) targetEl.classList.remove('d-none');
         }
 
-        // ৩. ক্লিক করার সাথে সাথে নতুন ট্যাবটি সেভ করে ফেলা
+        // ৩. ক্লিক করার সাথে সাথে নতুন ট্যাবটি এবং "বর্তমান সময়" সেভ করে ফেলা
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const target = btn.getAttribute('data-target');
             
-            // ম্যাজিক: ব্রাউজারে ক্লিক করা ট্যাবের নাম সেভ করে রাখা হচ্ছে
+            // ব্রাউজারে ক্লিক করা ট্যাবের নাম এবং সময় সেভ করে রাখা হচ্ছে
             localStorage.setItem('activeTab', target);
+            localStorage.setItem('tabSaveTime', new Date().getTime()); // <-- নতুন লাইন
 
             navButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -1160,3 +1172,186 @@ window.sendWhatsAppMsg = function(phone, name, balance) {
     const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
 }
+
+
+// ==========================================
+// --- MEMBER HISTORY (PASSBOOK) LOGIC ---
+// ==========================================
+window.showMemberHistory = function(memberId) {
+    const memberIdStr = memberId.toString();
+    const memberInfo = state.report?.members?.find(m => m.memberId.toString() === memberIdStr);
+    
+    if (!memberInfo) {
+        Swal.fire('Oops!', 'ডেটা লোড হয়নি। দয়া করে একটু পর আবার চেষ্টা করুন।', 'warning');
+        return;
+    }
+
+    // ১. নাম এবং ব্যালেন্স সেট করা
+    document.getElementById('history-member-name').innerText = memberInfo.name;
+    const balEl = document.getElementById('history-current-balance');
+    balEl.innerText = memberInfo.balance < 0 ? `Due: ৳${Math.abs(memberInfo.balance).toFixed(2)}` : `Adv: ৳${memberInfo.balance.toFixed(2)}`;
+    balEl.className = memberInfo.balance < 0 ? 'mb-0 text-danger' : 'mb-0 text-success';
+
+    const transactions = [];
+
+    // ২. জমার হিসাব (Deposits & Refunds)
+    const memberDeposits = state.deposits.filter(d => {
+        const dId = typeof d.member === 'object' ? d.member._id : d.member;
+        return dId.toString() === memberIdStr;
+    });
+
+    memberDeposits.forEach(d => {
+        transactions.push({
+            date: new Date(d.date),
+            details: d.amount < 0 ? '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">Refund / Minus</span>' : '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Cash In</span>',
+            amount: d.amount
+        });
+    });
+
+    // ৩. খরচের হিসাব (Meals)
+    const calcMode = state.report.calcMode || 'average';
+    const avgRate = state.report.mealRate || 0;
+    const s = state.settings || {};
+    const fixedRates = {
+        breakfast: Number(s.rateBreakfast) || 0, lunch: Number(s.rateLunch) || 0,
+        dinner: Number(s.rateDinner) || 0, sehri: Number(s.rateSehri) || 0, iftar: Number(s.rateIftar) || 0
+    };
+
+    const memberMeals = state.meals.filter(m => 
+        m.members.some(mem => (mem._id || mem).toString() === memberIdStr)
+    );
+
+    memberMeals.forEach(m => {
+        let cost = 0;
+        if (!memberInfo.isManager) {
+            if (calcMode === 'fixed') {
+                const mType = (m.mealType || '').trim().toLowerCase();
+                cost = fixedRates[mType] || 0;
+            } else {
+                cost = avgRate;
+            }
+        }
+        
+        transactions.push({
+            date: new Date(m.date),
+            details: `<span class="badge bg-primary bg-opacity-10 text-primary text-capitalize border border-primary border-opacity-25">${m.mealType} Meal</span>`,
+            amount: -cost // খরচ তাই মাইনাস
+        });
+    });
+
+    // ৪. তারিখ অনুযায়ী সাজানো (নতুনটা আগে)
+    transactions.sort((a, b) => b.date - a.date);
+
+    // ৫. টেবিলে ডেটা বসানো
+    const tbody = document.getElementById('history-table-body');
+    tbody.innerHTML = '';
+
+    if (transactions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">এই তারিখে কোনো লেনদেন নেই।</td></tr>`;
+    } else {
+        transactions.forEach(t => {
+            const dateStr = t.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            const amountColor = t.amount < 0 ? 'text-danger' : 'text-success';
+            const amountSign = t.amount > 0 ? '+' : '';
+            const amountText = t.amount === 0 ? 'Free' : `${amountSign}৳${Math.abs(t.amount).toFixed(2)}`;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="align-middle fw-bold text-muted ps-3" style="white-space: nowrap;">${dateStr}</td>
+                    <td class="align-middle">${t.details}</td>
+                    <td class="align-middle text-end fw-bold pe-3 ${amountColor}">${amountText}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // মোডাল ওপেন করা
+    new bootstrap.Modal(document.getElementById('memberHistoryModal')).show();
+};
+
+
+// ==========================================
+// --- DESIGNED EXCEL EXPORT LOGIC ---
+// ==========================================
+window.exportReportToExcel = function() {
+    if (!state.report || !state.report.members || state.report.members.length === 0) {
+        Swal.fire('Oops!', 'এক্সেল ডাউনলোড করার জন্য কোনো ডেটা নেই!', 'warning');
+        return;
+    }
+
+    // ১. এক্সেলের জন্য প্রফেশনাল ডিজাইন (CSS) সহ HTML টেবিল তৈরি
+    let tableHTML = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <meta charset="utf-8">
+        <style>
+            table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+            th { background-color: #0d6efd; color: #ffffff; font-weight: bold; padding: 10px; border: 1px solid #dddddd; text-align: center; }
+            td { padding: 8px; border: 1px solid #dddddd; text-align: center; vertical-align: middle; }
+            .text-start { text-align: left; }
+            .due { color: #dc3545; font-weight: bold; background-color: #f8d7da; }
+            .adv { color: #198754; font-weight: bold; background-color: #d1e7dd; }
+            .manager { color: #856404; font-size: 11px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <h2 style="text-align: center; color: #333; font-family: Arial, sans-serif;">Mess Monthly Report</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 150px;">MEMBER NAME</th>
+                    <th style="width: 80px;">ROOM</th>
+                    <th style="width: 100px;">TOTAL MEALS</th>
+                    <th style="width: 100px;">MEAL COST</th>
+                    <th style="width: 100px;">DEPOSITED</th>
+                    <th style="width: 120px;">FINAL BALANCE</th>
+                    <th style="width: 100px;">STATUS</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    const activeReportMembers = state.report.members.filter(member => member.totalMeals > 0 || member.depositedAmount > 0);
+
+    // ২. মেম্বারদের ডেটা টেবিলে বসানো এবং লজিক অনুযায়ী রঙ দেওয়া
+    activeReportMembers.forEach(member => {
+        const isDue = member.balance < 0;
+        const statusClass = isDue ? 'due' : 'adv';
+        const statusText = isDue ? 'Due' : 'Advance';
+        const managerText = member.isManager ? '<br><span class="manager">(Manager)</span>' : '';
+
+        tableHTML += `
+            <tr>
+                <td class="text-start"><b>${member.name}</b>${managerText}</td>
+                <td>${member.room}</td>
+                <td>${member.totalMeals}</td>
+                <td>৳${member.payableAmount.toFixed(2)}</td>
+                <td>৳${member.depositedAmount.toFixed(2)}</td>
+                <td class="${statusClass}">৳${Math.abs(member.balance).toFixed(2)}</td>
+                <td class="${statusClass}">${statusText}</td>
+            </tr>
+        `;
+    });
+
+    tableHTML += `
+            </tbody>
+        </table>
+    </body>
+    </html>
+    `;
+
+    // ৩. HTML কে সরাসরি .xls (Excel) ফাইলে রূপান্তর করে ডাউনলোড করানো
+    const blob = new Blob(['\ufeff' + tableHTML], { type: 'application/vnd.ms-excel' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    const niceDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Mess_Report_${niceDate}.xls`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};

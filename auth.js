@@ -99,14 +99,13 @@ function applyAuthRules() {
     if (isManager) {
         authBtn.innerHTML = '<i class="bi bi-box-arrow-right"></i> Logout';
         authBtn.classList.replace('btn-warning', 'btn-danger');
-
         // ম্যানেজার হলে সবকিছু দেখাবে
         styleTag.innerHTML = ``;
     } else {
         authBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Manager Login';
         authBtn.classList.replace('btn-danger', 'btn-warning');
 
-        // ম্যানেজার না হলে CSS ম্যাজিকের মাধ্যমে ফর্ম, ডেট ফিল্টার এবং বাটন লুকানো হবে
+        // সাধারণ মেম্বারদের জন্য অপশনগুলো লুকানোর ম্যাজিক CSS
         styleTag.innerHTML = `
             /* Date Filter Hide */
             div:has(> #global-start-date), 
@@ -115,7 +114,7 @@ function applyAuthRules() {
                 display: none !important; 
             }
 
-            /* 🔒 Manager Change Hide (শুধু অ্যাডমিন চেঞ্জ করতে পারবে) 🔒 */
+            /* Manager Change Hide */
             div:has(> #select-manager),
             button[onclick="saveManager()"] {
                 display: none !important;
@@ -124,13 +123,22 @@ function applyAuthRules() {
             /* Add Forms Hide */
             .card:has(form), form { display: none !important; }
             
-            /* Action column hide (Report, Balance এবং Alert টেবিলগুলোকে বাদে) */
+            /* Action column hide */
             table:not(:has(#table-low-balance)):not(:has(#table-balance)):not(:has(#table-report)) th.text-end:last-child, 
             table:not(:has(#table-low-balance)):not(:has(#table-balance)):not(:has(#table-report)) td.text-end:last-child { 
                 display: none !important; 
             }
             
-            button[onclick^="delete"], button[onclick^="openEdit"], button[onclick^="editShopperForDate"] { display: none !important; }
+            /* 🔒 ম্যাজিক: সব ধরনের Delete, Clear এবং Edit বাটন গায়েব করা 🔒 */
+            button[onclick*="delete"], 
+            button[onclick*="Delete"], 
+            button[onclick*="clear"], 
+            button[onclick*="Clear"],
+            button[onclick*="remove"],
+            button[onclick^="openEdit"], 
+            button[onclick^="editShopperForDate"] { 
+                display: none !important; 
+            }
         `;
     }
 }

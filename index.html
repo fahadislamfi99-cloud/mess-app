@@ -91,61 +91,69 @@
             <h3 class="mb-4">Dashboard Overview</h3>
             <div class="row g-4">
 
-                <!-- Current meal rate -->
+                <div class="row g-4">
+
                 <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-warning border-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-warning border-4 h-100">
                         <div class="card-body">
-                            <p class="text-muted mb-1">Current Meal Rate</p>
-                            <h2 class="mb-0">৳<span id="stat-rate">0.00</span></h2>
+                            <i class="bi bi-lightning-charge-fill bg-icon text-warning"></i>
+                            <p class="text-muted mb-1 card-title-text">Current Meal Rate</p>
+                            <h2 class="mb-0 text-dark">৳<span id="stat-rate">0.00</span></h2>
                         </div>
                     </div>
                 </div>
-                <!-- Current meal rate -->
 
-                <!-- Cash in hand -->
                 <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-dark border-4" id="card-cash">
+                    <div class="card stat-card shadow-sm border-0 border-start border-success border-4 h-100" id="card-cash">
                         <div class="card-body">
-                            <p class="text-muted mb-1 fw-bold" id="title-cash">Cash in Hand (ক্যাশ আছে)</p>
-                            <h2 class="mb-0 text-dark" id="text-cash">৳<span id="stat-cash">0</span></h2>
+                            <i class="bi bi-wallet2 bg-icon text-success"></i>
+                            <p class="text-muted mb-1 card-title-text" id="title-cash">Cash in Hand (ক্যাশ আছে)</p>
+                            <h2 class="mb-0 text-success" id="text-cash">৳<span id="stat-cash">0</span></h2>
                         </div>
                     </div>
                 </div>
-                <!-- Cash in hand -->
-
 
                 <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-danger border-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-danger border-4 h-100">
                         <div class="card-body">
-                            <p class="text-muted mb-1">Total Expense (খরচ)</p>
+                            <i class="bi bi-cart-dash-fill bg-icon text-danger"></i>
+                            <p class="text-muted mb-1 card-title-text">Total Expense (খরচ)</p>
                             <h2 class="mb-0 text-danger">৳<span id="stat-expense">0</span></h2>
                         </div>
                     </div>
                 </div>
+
                 <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-info border-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-info border-4 h-100">
                         <div class="card-body">
-                            <p class="text-muted mb-1">Total Deposited (মোট জমা)</p>
+                            <i class="bi bi-piggy-bank-fill bg-icon text-info"></i>
+                            <p class="text-muted mb-1 card-title-text">Total Deposited (মোট জমা)</p>
                             <h2 class="mb-0 text-info">৳<span id="stat-deposit">0</span></h2>
                         </div>
                     </div>
                 </div>
+
                 <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-primary border-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-primary border-4 h-100">
                         <div class="card-body">
-                            <p class="text-muted mb-1">Total Members</p>
-                            <h2 id="stat-members" class="mb-0">0</h2>
+                            <i class="bi bi-people-fill bg-icon text-primary"></i>
+                            <p class="text-muted mb-1 card-title-text">Total Members</p>
+                            <h2 id="stat-members" class="mb-0 text-primary">0</h2>
                         </div>
                     </div>
                 </div>
+
                 <div class="col-12 col-md-4">
-                    <div class="card stat-card shadow-sm border-0 border-start border-success border-4">
+                    <div class="card stat-card shadow-sm border-0 border-start border-success border-4 h-100">
                         <div class="card-body">
-                            <p class="text-muted mb-1">Total Meals (Month)</p>
-                            <h2 id="stat-meals" class="mb-0">0</h2>
+                            <i class="bi bi-egg-fried bg-icon text-success"></i>
+                            <p class="text-muted mb-1 card-title-text">Total Meals (Month)</p>
+                            <h2 id="stat-meals" class="mb-0 text-success">0</h2>
                         </div>
                     </div>
                 </div>
+
+            </div>
             </div>
 
             <!-- Today's Meals -->
@@ -340,6 +348,7 @@
 
         <div id="add-bazar" class="view-section d-none">
             <h3 class="mb-4">Bazar Expenses</h3>
+            
             <div class="row">
                 <div class="col-lg-4 col-12 mb-4">
                     <div class="card shadow-sm border-0 mb-4">
@@ -537,49 +546,73 @@
         </div>
 
         <div id="report" class="view-section d-none">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3>Monthly Report</h3>
-                <button class="btn btn-outline-danger" onclick="downloadReportPDF()">
-                    <i class="bi bi-file-earmark-pdf"></i> Download PDF
-                </button>
+            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                <div>
+                    <h4 class="fw-bold text-dark mb-0"><i
+                            class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>Monthly Report</h4>
+                    <small class="text-muted">মেস হিসাবের চূড়ান্ত রিপোর্ট</small>
+                </div>
+                <div class="d-flex gap-2 d-print-none">
+                    <button onclick="exportReportToExcel()" class="btn btn-outline-success shadow-sm px-3 fw-bold">
+                        <i class="bi bi-file-earmark-excel-fill me-1"></i> Export Excel
+                    </button>
+                    <button onclick="downloadReportPDF()" class="btn btn-outline-danger shadow-sm px-3 fw-bold">
+                        <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF
+                    </button>
+                </div>
             </div>
 
-
-
-            <div class="card shadow-sm border-0 mb-4 bg-primary text-white">
-                <div class="card-body d-flex justify-content-around text-center py-4">
-                    <div>
-                        <h6 class="text-white-50">Total Expense</h6>
-                        <h3 class="mb-0">৳<span id="report-expense">0</span></h3>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card border border-primary border-opacity-25 shadow-sm h-100 bg-primary bg-opacity-10">
+                        <div class="card-body text-center py-3">
+                            <div class="text-primary small fw-bold text-uppercase mb-1">Total Expense</div>
+                            <h3 class="fw-bold mb-0 text-dark">৳<span id="report-expense">0</span></h3>
+                        </div>
                     </div>
-                    <div>
-                        <h6 class="text-white-50">Total Meals</h6>
-                        <h3 class="mb-0" id="report-meals">0</h3>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border border-success border-opacity-25 shadow-sm h-100 bg-success bg-opacity-10">
+                        <div class="card-body text-center py-3">
+                            <div class="text-success small fw-bold text-uppercase mb-1">Total Meals</div>
+                            <h3 class="fw-bold mb-0 text-dark" id="report-meals">0</h3>
+                        </div>
                     </div>
-                    <div>
-                        <h6 class="text-white-50">Meal Rate</h6>
-                        <h3 class="mb-0">৳<span id="report-rate">0.00</span></h3>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border border-info border-opacity-25 shadow-sm h-100 bg-info bg-opacity-10">
+                        <div class="card-body text-center py-3">
+                            <div class="text-info small fw-bold text-uppercase mb-1">Meal Rate</div>
+                            <h3 class="fw-bold mb-0 text-dark" id="report-rate">0.00</h3>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Name</th>
-                                    <th class="text-center">Meals</th>
-                                    <th class="text-end">Payable</th>
-                                    <th class="text-end text-success">Deposited</th>
-                                    <th class="text-end">Balance (Due/Adv)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-report">
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered mb-0" style="font-size: 0.95rem;">
+                        <thead class="table-light text-muted small">
+                            <tr>
+                                <th class="py-3 px-3">MEMBER NAME</th>
+                                <th class="py-3 text-center">MEALS</th>
+                                <th class="py-3 text-end">MEAL COST</th>
+                                <th class="py-3 text-end">DEPOSITED</th>
+                                <th class="py-3 text-end px-3">FINAL BALANCE</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-report">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-none d-print-flex justify-content-between mt-5 pt-5 px-4">
+                <div class="text-center border-top border-dark border-2 pt-2 px-3" style="width: 200px;">
+                    <span class="fw-bold text-dark">Manager Signature</span>
+                </div>
+                <div class="text-center border-top border-dark border-2 pt-2 px-3" style="width: 200px;">
+                    <span class="fw-bold text-dark">Date</span>
                 </div>
             </div>
         </div>
@@ -976,6 +1009,39 @@
             </div>
         </div>
         <!-- Settings Modal -->
+
+        <!-- Member History Modal -->
+        <div class="modal fade" id="memberHistoryModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-primary text-white border-0">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-clock-history me-2"></i><span
+                                id="history-member-name">Name</span>'s History</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <div class="bg-light p-3 text-center border-bottom">
+                            <div class="text-muted small fw-bold mb-1">Current Balance</div>
+                            <h3 class="mb-0 fw-bold" id="history-current-balance">৳0.00</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" style="font-size: 0.9rem;">
+                                <thead class="table-light position-sticky top-0 shadow-sm">
+                                    <tr>
+                                        <th class="ps-3">Date</th>
+                                        <th>Details</th>
+                                        <th class="text-end pe-3">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Member History Modal -->
 
     </div>
 
