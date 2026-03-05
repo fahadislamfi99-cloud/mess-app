@@ -559,6 +559,7 @@ function renderBazarTable() {
         }
     });
 
+
     let summaryCards = '';
     for (const [name, datesArray] of Object.entries(shopperDates)) {
         const count = datesArray.length;
@@ -577,21 +578,60 @@ function renderBazarTable() {
         `;
     }
 
-    if (summaryCards) {
+    // যারা বাজার করেনি তাদের লিস্ট তৈরি করা
+    let nonShopperCards = '';
+    
+    if (state.report && state.report.members) {
+        const culprits = state.report.members.filter(m => 
+            m.totalMeals > 0 && 
+            !m.isManager && 
+            !shopperDates[m.name]
+        );
+
+        if (culprits.length > 0) {
+            nonShopperCards += `<div class="mt-4 pt-3 border-top border-danger border-opacity-25">`;
+            nonShopperCards += `<div class="text-danger fw-bold mb-3 d-flex align-items-center" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;"><i class="bi bi-exclamation-octagon-fill fs-5 me-2"></i> Non-Shoppers (বাজার করেনি)</div>`;
+            nonShopperCards += `<div class="d-flex flex-wrap gap-2">`;
+            culprits.forEach(c => {
+                nonShopperCards += `
+                    <div class="d-inline-flex align-items-center bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded-pill px-3 py-1 text-danger shadow-sm">
+                        <i class="bi bi-person-x-fill me-2"></i> <span class="fw-bold" style="font-size: 0.85rem;">${c.name}</span> <span class="ms-1 small opacity-75">(${c.room})</span>
+                    </div>
+                `;
+            });
+            nonShopperCards += `</div></div>`;
+        } else if (summaryCards !== '') {
+             nonShopperCards += `<div class="mt-4 pt-3 border-top border-success border-opacity-25 text-success fw-bold d-flex align-items-center" style="font-size: 0.85rem;"><i class="bi bi-check-circle-fill fs-5 me-2"></i> সবাই বাজার করেছে!</div>`;
+        }
+    }
+
+    // ==========================================
+    // 🌐 ম্যাজিক: ডেটাবেস (Global Settings) থেকে চেক করে পুরো সেকশন শো/হাইড করা
+    // ==========================================
+    let showBazarReport = true; // ডিফল্ট
+    if (state.settings && state.settings.showBazarReport !== undefined) {
+        showBazarReport = state.settings.showBazarReport;
+    }
+    
+    const toggleBtn = document.getElementById('toggle-bazar-report');
+    if (toggleBtn) toggleBtn.checked = showBazarReport;
+
+    if (showBazarReport && (summaryCards || nonShopperCards)) {
         tbody.innerHTML += `
             <tr>
                 <td colspan="4" class="bg-white border-0 pb-4 pt-2 px-0">
                     <div class="p-3 p-md-4 rounded-4 shadow-sm" style="background: linear-gradient(145deg, #fdfbfb 0%, #ebedee 100%); border: 1px solid #e2e8f0;">
                         <div class="text-secondary fw-bold mb-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
                             <div><i class="bi bi-award-fill text-warning fs-5 me-2"></i> Monthly Shopper Report</div>
-                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary fw-normal" style="font-size: 0.7rem; text-transform: none;">Click names for details</span>
                         </div>
                         <div class="d-flex flex-wrap">${summaryCards}</div>
+                        ${nonShopperCards}
                     </div>
                 </td>
             </tr>
         `;
     }
+
 
     const sortedDates = Object.keys(groupedBazar).sort((a, b) => new Date(b) - new Date(a));
     const datesToShow = sortedDates.slice(0, visibleBazarLimit);

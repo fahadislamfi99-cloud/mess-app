@@ -88,6 +88,7 @@ async function checkPIN() {
 // নিচের কোড থাকলে শুধু manager date edit করতে পারবে এবং অপশনগুলো হাইড হবে।
 function applyAuthRules() {
     const authBtn = document.getElementById('btn-auth');
+    const toggleContainer = document.getElementById('bazar-report-toggle-container'); // 🔒 টগল বাটনটি ধরা হলো
 
     let styleTag = document.getElementById('auth-styles');
     if (!styleTag) {
@@ -99,11 +100,19 @@ function applyAuthRules() {
     if (isManager) {
         authBtn.innerHTML = '<i class="bi bi-box-arrow-right"></i> Logout';
         authBtn.classList.replace('btn-warning', 'btn-danger');
+        
         // ম্যানেজার হলে সবকিছু দেখাবে
-        styleTag.innerHTML = ``;
+        styleTag.innerHTML = ``; 
+        
+        // 🔒 ম্যাজিক ফিক্স: ম্যানেজার হলে টগল বাটনটি জোর করে (Forcefully) শো করানো হবে
+        if(toggleContainer) toggleContainer.style.setProperty('display', 'flex', 'important');
+        
     } else {
         authBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Manager Login';
         authBtn.classList.replace('btn-danger', 'btn-warning');
+
+        // 🔒 ম্যাজিক ফিক্স: সাধারণ মেম্বার হলে টগল বাটনটি পুরোপুরি হাইড করে রাখা হবে
+        if(toggleContainer) toggleContainer.style.setProperty('display', 'none', 'important');
 
         // সাধারণ মেম্বারদের জন্য অপশনগুলো লুকানোর ম্যাজিক CSS
         styleTag.innerHTML = `
@@ -124,8 +133,8 @@ function applyAuthRules() {
             .card:has(form), form { display: none !important; }
             
             /* Action column hide */
-            table:not(:has(#table-low-balance)):not(:has(#table-balance)):not(:has(#table-report)) th.text-end:last-child, 
-            table:not(:has(#table-low-balance)):not(:has(#table-balance)):not(:has(#table-report)) td.text-end:last-child { 
+            table:not(:has(#table-low-balance)):not(:has(#table-balance)):not(:has(#table-report)):not(:has(#history-table-body)) th.text-end:last-child, 
+            table:not(:has(#table-low-balance)):not(:has(#table-balance)):not(:has(#table-report)):not(:has(#history-table-body)) td.text-end:last-child { 
                 display: none !important; 
             }
             

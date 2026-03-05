@@ -1355,3 +1355,178 @@ window.exportReportToExcel = function() {
     link.click();
     document.body.removeChild(link);
 };
+
+// ==========================================
+// --- CLOSE TERM & HANDOVER (SAAS LOGIC) ---
+// ==========================================
+window.triggerHandover = async function() {
+    if (!state.report || !state.report.members || state.report.members.length === 0) {
+        Swal.fire('Oops!', 'হিসাব ক্লোজ করার মতো কোনো ডেটা নেই!', 'warning');
+        return;
+    }
+
+    // ১. নতুন ম্যানেজার সিলেক্ট করার জন্য অপশন তৈরি
+    const activeMembers = state.members
+        .filter(m => m.isActive)
+        .sort((a, b) => String(a.room).localeCompare(String(b.room), undefined, { numeric: true }));
+        
+    let optionsHTML = '<option value="" disabled selected>-- নতুন ম্যানেজার সিলেক্ট করুন --</option>';
+    activeMembers.forEach(m => {
+        optionsHTML += `<option value="${m._id}">${m.name} (Room: ${m.room})</option>`;
+    });
+
+    // ২. প্রফেশনাল SweetAlert পপআপ (SaaS স্টাইল)
+    const { value: formValues } = await Swal.fire({
+        title: '<i class="bi bi-exclamation-triangle-fill text-warning fs-1 d-block mb-2"></i> Close Term?',
+        html: `
+            <p class="text-muted small mb-4">বর্তমান মেয়াদের সব হিসাব ক্লোজ হয়ে যাবে এবং বকেয়া (Due) ও পাওনা (Advance) টাকাগুলো ঠিক পরের মেয়াদে <strong>Previous Balance</strong> হিসেবে অটোমেটিক ট্রান্সফার হয়ে যাবে।</p>
+            <div class="text-start bg-light p-3 rounded border">
+                <label class="fw-bold small mb-2 text-dark">পরের মেয়াদের জন্য নতুন ম্যানেজার কে হবেন?</label>
+                <select id="next-manager-select" class="form-select border-primary fw-bold text-primary">
+                    ${optionsHTML}
+                </select>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Close & Transfer <i class="bi bi-arrow-right-circle ms-1"></i>',
+        preConfirm: () => {
+            const newManagerId = document.getElementById('next-manager-select').value;
+            if (!newManagerId) {
+                Swal.showValidationMessage('আপনাকে অবশ্যই একজন নতুন ম্যানেজার সিলেক্ট করতে হবে!');
+                return false;
+            }
+            return newManagerId;
+        }
+    });
+
+    if (formValues) {
+        const newManagerId = formValues;
+
+        // লোডিং অ্যানিমেশন চালু
+        Swal.fire({ 
+            title: 'Processing Handover...', 
+            html: 'সবার ব্যালেন্স ট্রান্সফার করা হচ্ছে, দয়া করে অপেক্ষা করুন।<br><br><span class="spinner-border text-primary"></span>', 
+            allowOutsideClick: false, 
+            showConfirmButton: false 
+        });
+
+        try {
+            // ৩. ট্রান্সফারের তারিখ নির্ধারণ (বর্তমান মেয়াদের End Date এর ঠিক পরের দিন)
+            const endDateObj = new Date(globalEndDate);
+            endDateObj.setDate(endDateObj.getDate() + 1);
+            const nextDayStr = endDateObj.toISOString().split('T')[0];
+
+            // ৪. সবার ব্যালেন্স ট্রান্সফার করা (Looping through all members)
+            const transferPromises = [];
+            state.report.members.forEach(member => {
+                const balance = member.balance;
+                if (balance !== 0 && !member.isManager) {
+                    // ব্যালেন্স যদি মাইনাস (Due) হয়, তবে অটোমেটিক রিফান্ড বা নেগেটিভ ডেপোজিট হিসেবে যাবে
+                    transferPromises.push(
+                        fetch(`${API_BASE_URL}/deposits`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                date: nextDayStr, 
+                                member: member.memberId || member._id, 
+                                amount: balance 
+                            })
+                        })
+                    );
+                }
+            });
+
+            // সব API কল একসাথে ফায়ার করা (যাতে সময় কম লাগে)
+            await Promise.all(transferPromises);
+
+            // ৫. নতুন ম্যানেজার ডাটাবেসে সেট করা
+            const newYear = endDateObj.getFullYear();
+            const newMonth = endDateObj.getMonth() + 1;
+            
+            await fetch(`${API_BASE_URL}/manager`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ member: newManagerId, year: newYear, month: newMonth })
+            });
+
+            // ৬. গ্লোবাল সেটিংস (Report Period) আপডেট করে নতুন মেয়াদে নিয়ে যাওয়া
+            const endOfNewMonthObj = new Date(newYear, newMonth, 0); // ওই মাসের শেষ দিন
+            const endOfNewMonthStr = endOfNewMonthObj.toISOString().split('T')[0];
+            
+            await fetch(`${API_BASE_URL}/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    periodStart: nextDayStr,
+                    periodEnd: endOfNewMonthStr
+                })
+            });
+
+            // লোকাল ভেরিয়েবল এবং ইনপুট ফিল্ড আপডেট
+            globalStartDate = nextDayStr;
+            globalEndDate = endOfNewMonthStr;
+            
+            const startInput = document.getElementById('global-start-date');
+            const endInput = document.getElementById('global-end-date');
+            if(startInput) startInput.value = globalStartDate;
+            if(endInput) endInput.value = globalEndDate;
+
+            // ডেটা রিলোড করা
+            await loadAllData();
+            
+            // ৭. সাকসেস মেসেজ এবং ড্যাশবোর্ডে রিডাইরেক্ট
+            Swal.fire({
+                icon: 'success',
+                title: 'Handover Successful!',
+                text: 'হিসাব সফলভাবে ক্লোজ হয়েছে এবং নতুন মেয়াদের ড্যাশবোর্ড রেডি!',
+                confirmButtonColor: '#198754'
+            }).then(() => {
+                const dashboardBtn = document.querySelector('.nav-btn[data-target="dashboard"]');
+                if(dashboardBtn) dashboardBtn.click();
+            });
+
+        } catch (error) {
+            console.error("Handover Error:", error);
+            Swal.fire('Error!', 'সার্ভারে ব্যালেন্স ট্রান্সফার করতে সমস্যা হয়েছে। ইন্টারনেট চেক করুন।', 'error');
+        }
+    }
+};
+
+// ==========================================
+// --- GLOBAL DISPLAY SETTINGS (DATABASE CONTROL) ---
+// ==========================================
+window.saveDisplaySettings = async function() {
+    const isChecked = document.getElementById('toggle-bazar-report').checked;
+    
+    try {
+        // ১. ডেটাবেসে গ্লোবালি সেভ করার জন্য API কল (auth.js থেকে টোকেন নেওয়া হলো)
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/settings`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ showBazarReport: isChecked })
+        });
+
+        if (response.ok) {
+            // ২. লোকাল স্টেট আপডেট করা (যাতে সাথে সাথে কাজ করে)
+            if (!state.settings) state.settings = {};
+            state.settings.showBazarReport = isChecked;
+            
+            // ৩. বাজার পেজ রিলোড করা
+            if(typeof renderBazarTable === 'function') renderBazarTable();
+            
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: isChecked ? 'Global Report Enabled!' : 'Global Report Hidden!' });
+        } else {
+            Swal.fire('Error!', 'সেটিংস সেভ করতে ব্যর্থ হয়েছে।', 'error');
+        }
+    } catch (error) {
+        console.error("Settings Update Error:", error);
+        Swal.fire('Error!', 'সার্ভারে কানেক্ট করতে সমস্যা হয়েছে।', 'error');
+    }
+};

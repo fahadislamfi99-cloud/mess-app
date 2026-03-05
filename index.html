@@ -522,9 +522,18 @@
                         </div>
                     </div>
                 </div>
+                
                 <div class="col-lg-8 col-12">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body">
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-bottom-0">
+                            <h5 class="mb-0 text-dark fw-bold"><i class="bi bi-clock-history text-primary me-2"></i>Bazar History</h5>
+                            
+                            <div class="form-check form-switch fs-6 mb-0" id="bazar-report-toggle-container" style="display: none; align-items: center;">
+                                <input class="form-check-input" type="checkbox" id="toggle-bazar-report" onchange="saveDisplaySettings()" style="cursor: pointer; transform: scale(1.2); margin-top: 0;">
+                                <label class="form-check-label fw-bold text-primary ms-2 mt-1" for="toggle-bazar-report" style="cursor: pointer;">Show Report</label>
+                            </div>
+                        </div>
+                        <div class="card-body pt-0">
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle">
                                     <thead class="table-light">
@@ -542,6 +551,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -1006,6 +1016,27 @@
                         </div>
                     </div>
                 </div>
+
+                
+
+                <!-- Term Management -->
+                 <div class="col-12 mb-4">
+                    <div class="card shadow-sm border-0 border-start border-warning border-4" style="background-color: #fffaf0;">
+                        <div class="card-header bg-transparent pb-0 border-0">
+                            <h5 class="mb-0 text-dark"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Term Management (Danger Zone)</h5>
+                            <p class="text-muted small mt-1">বর্তমান মেস হিসাব ক্লোজ করে নতুন মেয়াদের জন্য ব্যালেন্স ট্রান্সফার করুন।</p>
+                        </div>
+                        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                            <p class="text-dark small mb-3 mb-md-0 me-md-4">
+                                <strong>সতর্কতা:</strong> এই বাটনে ক্লিক করলে বর্তমান মেয়াদের সব হিসাব ক্লোজ হয়ে যাবে এবং বকেয়া (Due) ও পাওনা (Advance) টাকাগুলো অটোমেটিক্যালি নতুন মেয়াদের <b>Previous Balance</b> হিসেবে যুক্ত হয়ে যাবে।
+                            </p>
+                            <button onclick="triggerHandover()" class="btn btn-warning shadow-sm px-4 py-2 fw-bold text-dark text-nowrap">
+                                <i class="bi bi-box-arrow-right me-1"></i> Close Term & Handover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Term Management -->
             </div>
         </div>
         <!-- Settings Modal -->
