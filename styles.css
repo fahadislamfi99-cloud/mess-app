@@ -182,3 +182,57 @@ body {
     letter-spacing: -1px;
 }
 
+/* ========================================== */
+/* 📱 MOBILE RESPONSIVE FIXES (REPORT TABLE) */
+/* ========================================== */
+@media (max-width: 768px) {
+    #report .table thead,
+    .table-responsive .table thead {
+        display: table-header-group !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+}
+
+/* ========================================== */
+/* 🌟 PREMIUM DASHBOARD CARDS (MODERN SAAS) */
+/* ========================================== */
+.premium-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.04) !important;
+}
+.premium-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.06) !important;
+}
+.icon-box {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+/* 📱 Mobile Compact View */
+@media (max-width: 768px) {
+    .premium-card .card-body {
+        padding: 0.85rem !important;
+    }
+    .premium-card .icon-box {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        margin-right: 0.6rem !important;
+    }
+    .premium-card .icon-box i {
+        font-size: 1.1rem !important;
+    }
+    .premium-card h6 {
+        font-size: 0.65rem !important;
+        margin-bottom: 0.1rem !important;
+    }
+    .premium-card h3 {
+        font-size: 1.15rem !important;
+    }
+}

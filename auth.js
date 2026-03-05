@@ -129,6 +129,23 @@ function applyAuthRules() {
                 display: none !important;
             }
 
+            /* 🔒 Settings Menu Hide 🔒 */
+            [data-target="settings"],
+            a[href="#settings"],
+            li:has([data-target="settings"]) {
+                display: none !important;
+            }
+
+            /* 🔒 Danger Zone / Handover Card Hide 🔒 */
+            .col-12:has(button[onclick="triggerHandover()"]) {
+                display: none !important;
+            }
+
+            /* Manager Report Toggle Hide */
+            #bazar-report-toggle-container {
+                display: none !important;
+            }
+
             /* Add Forms Hide */
             .card:has(form), form { display: none !important; }
             
@@ -148,6 +165,8 @@ function applyAuthRules() {
             button[onclick^="editShopperForDate"] { 
                 display: none !important; 
             }
+
+            
         `;
     }
 }
