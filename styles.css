@@ -214,25 +214,32 @@ body {
     border-radius: 12px;
 }
 
-/* 📱 Mobile Compact View */
+/* 📱 Mobile Compact View (Fixed Font Sizes) */
 @media (max-width: 768px) {
     .premium-card .card-body {
-        padding: 0.85rem !important;
+        padding: 1rem !important; /* প্যাডিং একটু বাড়ানো হয়েছে */
     }
     .premium-card .icon-box {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border-radius: 10px;
-        margin-right: 0.6rem !important;
+        margin-right: 0.75rem !important;
     }
     .premium-card .icon-box i {
-        font-size: 1.1rem !important;
+        font-size: 1.25rem !important;
     }
     .premium-card h6 {
-        font-size: 0.65rem !important;
-        margin-bottom: 0.1rem !important;
+        font-size: 0.75rem !important; /* টাইটেলের সাইজ বড় করা হয়েছে (আগে 0.65rem ছিল) */
+        margin-bottom: 0.2rem !important;
     }
     .premium-card h3 {
-        font-size: 1.15rem !important;
+        font-size: 1.4rem !important; /* টাকার অ্যামাউন্ট বড় করা হয়েছে (আগে 1.15rem ছিল) */
     }
+}
+
+/* ========================================== */
+/* 🔒 FIX: FORCE BOLD NUMBERS IN DASHBOARD */
+/* ========================================== */
+.premium-card h3, #text-cash {
+    font-weight: 800 !important;
 }
